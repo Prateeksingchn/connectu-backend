@@ -1,0 +1,120 @@
+###############################################
+# ConnectU API - HTTP Requests
+# Use with REST Client VSCode extension
+# or copy-paste to Postman/Insomnia
+###############################################
+
+@baseUrl = http://localhost:3000
+@token = your-jwt-token-here
+@userId = your-user-id-here
+@roomId = your-room-id-here
+
+###############################################
+# 1. AUTHENTICATION
+###############################################
+
+### Register User 1
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@test.com",
+  "password": "password123",
+  "name": "Alice",
+  "genderId": 1,
+  "dateOfBirth": "1995-01-01"
+}
+
+### Register User 2
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "bob@test.com",
+  "password": "password123",
+  "name": "Bob",
+  "genderId": 1,
+  "dateOfBirth": "1996-01-01"
+}
+
+### Login User 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@test.com",
+  "password": "password123"
+}
+
+### Login User 2
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "bob@test.com",
+  "password": "password123"
+}
+
+### Get Current User (Protected)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+###############################################
+# 2. MATCHING QUEUE
+###############################################
+
+### Join Matching Queue
+POST {{baseUrl}}/matching/join-queue
+Authorization: Bearer {{token}}
+
+### Leave Matching Queue
+DELETE {{baseUrl}}/matching/leave-queue
+Authorization: Bearer {{token}}
+
+### Clear All Queue (Admin Only)
+DELETE {{baseUrl}}/matching/clear-queue
+Authorization: Bearer {{token}}
+
+###############################################
+# 3. CHAT ROOM MANAGEMENT
+###############################################
+
+### End Chat Room
+DELETE {{baseUrl}}/matching/end-chat-room/{{roomId}}
+Authorization: Bearer {{token}}
+
+### Delete Chat Room (if endpoint exists)
+DELETE {{baseUrl}}/matching/delete-chat-room/{{roomId}}
+Authorization: Bearer {{token}}
+
+###############################################
+# CURL COMMANDS (Copy-paste to terminal)
+###############################################
+
+###
+# Register User
+# curl -X POST http://localhost:3000/auth/register \
+#   -H "Content-Type: application/json" \
+#   -d '{"email":"test@test.com","password":"password123","name":"Test User","genderId":1,"dateOfBirth":"1995-01-01"}'
+
+###
+# Login
+# curl -X POST http://localhost:3000/auth/login \
+#   -H "Content-Type: application/json" \
+#   -d '{"email":"test@test.com","password":"password123"}'
+
+###
+# Join Queue
+# curl -X POST http://localhost:3000/matching/join-queue \
+#   -H "Authorization: Bearer YOUR_TOKEN"
+
+###
+# Leave Queue
+# curl -X DELETE http://localhost:3000/matching/leave-queue \
+#   -H "Authorization: Bearer YOUR_TOKEN"
+
+###
+# End Chat Room
+# curl -X DELETE http://localhost:3000/matching/end-chat-room/ROOM_ID \
+#   -H "Authorization: Bearer YOUR_TOKEN"
+
