@@ -27,6 +27,8 @@ export class FriendshipsService {
     userId1: string,
     userId2: string,
   ): Promise<boolean> {
+    // findActiveByUserId() is expiry-aware (self-heals a stale isActive flag), so a
+    // non-null result here is genuinely still active, not just not-yet-swept.
     // Check if either user has an active chat room with the other
     const room1 = await this.chatRoomRepository.findActiveByUserId(userId1);
     if (room1) {

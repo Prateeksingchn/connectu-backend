@@ -39,6 +39,8 @@ export class MatchingService {
     }
 
     // 2. Check if user is in active chat room
+    // findActiveByUserId() is expiry-aware (self-heals a stale isActive flag), so a
+    // non-null result here is genuinely still active, not just not-yet-swept.
     const activeRoom = await this.chatRoomRepository.findActiveByUserId(userId);
     if (activeRoom) {
       throw new ConflictException('You are already in an active chat room');
@@ -396,9 +398,12 @@ export class MatchingService {
       }
 
       // Force leave Socket.io room for all connected sockets
+      // `server` here is the default-namespace object (see WebSocketGateway's
+      // `namespace: '/'` config), whose own `.sockets` is already the
+      // Map<SocketId, Socket> of connected sockets - not `server.sockets.sockets`.
       const server = this.wsGateway.getServer();
       for (const socketId of socketIds) {
-        const socket = server.sockets.sockets.get(socketId);
+        const socket = (server.sockets as unknown as Map<string, any>).get(socketId);
         if (socket) {
           socket.leave(roomId);
         }

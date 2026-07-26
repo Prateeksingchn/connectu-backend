@@ -40,13 +40,33 @@ export class ChatRoomRepository {
     });
   }
 
+  /**
+   * Return a user's active chat room, self-healing a stale isActive flag the same
+   * way findValidActiveRoom() does: the raw query only filters on isActive=true,
+   * but MatchingScheduler only sweeps expired rooms once a minute, so a room that
+   * already passed its expiresAt can still be flagged active for up to a minute.
+   * Callers should be able to trust that a non-null result here is genuinely
+   * still active, not just not-yet-swept.
+   */
   async findActiveByUserId(userId: string): Promise<ChatRoom | null> {
-    return this.repo.findOne({
+    const room = await this.repo.findOne({
       where: [
         { user1Id: userId, isActive: true },
         { user2Id: userId, isActive: true },
       ],
     });
+
+    if (!room) {
+      return null;
+    }
+
+    const expiresAt = room.expiresAt ? new Date(room.expiresAt).getTime() : null;
+    if (expiresAt && expiresAt <= Date.now()) {
+      await this.expireRoom(room.id);
+      return null;
+    }
+
+    return room;
   }
 
   async markInactive(id: string): Promise<void> {
