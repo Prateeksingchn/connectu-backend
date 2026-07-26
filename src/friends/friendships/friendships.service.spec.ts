@@ -28,7 +28,6 @@ describe('FriendshipsService', () => {
     chatRoomRepository = {
       findActiveByUserId: jest.fn().mockResolvedValue(null),
       participatedInSameChatRoom: jest.fn().mockResolvedValue(true),
-      expireRoom: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,81 +64,14 @@ describe('FriendshipsService', () => {
         service.sendFriendRequest(requesterId, { addresseeId }),
       ).rejects.toThrow(ForbiddenException);
       expect(friendshipRepository.createIfAbsent).not.toHaveBeenCalled();
-      expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
     });
 
-    // --- Expiry-awareness boundary (same underlying bug as MatchingService.joinQueue) ---
-    // findActiveByUserId() only filters on isActive=true, so a room that already
-    // passed its expiresAt but hasn't been swept yet by MatchingScheduler would
-    // otherwise wrongly count as "active" and block the friend request.
-    it('self-heals and allows the request when the "active" room has already passed its expiresAt', async () => {
-      chatRoomRepository.findActiveByUserId.mockImplementation(async (userId: string) =>
-        userId === requesterId
-          ? {
-              id: 'room-1',
-              user1Id: requesterId,
-              user2Id: addresseeId,
-              isActive: true,
-              expiresAt: new Date(Date.now() - 60_000), // expired a minute ago
-            }
-          : null,
-      );
-      friendshipRepository.createIfAbsent.mockResolvedValue({
-        created: true,
-        friendship: { id: 'f-new', status: FriendshipStatus.PENDING },
-      });
-
-      const result = await service.sendFriendRequest(requesterId, { addresseeId });
-
-      expect(chatRoomRepository.expireRoom).toHaveBeenCalledWith('room-1');
-      expect(friendshipRepository.createIfAbsent).toHaveBeenCalledWith(
-        requesterId,
-        addresseeId,
-      );
-      expect(result).toEqual({
-        message: 'Friend request sent successfully',
-        friendshipId: 'f-new',
-      });
-    });
-
-    it('still rejects when the active room genuinely has not expired yet', async () => {
-      chatRoomRepository.findActiveByUserId.mockImplementation(async (userId: string) =>
-        userId === requesterId
-          ? {
-              id: 'room-1',
-              user1Id: requesterId,
-              user2Id: addresseeId,
-              isActive: true,
-              expiresAt: new Date(Date.now() + 60_000), // still a minute left
-            }
-          : null,
-      );
-
-      await expect(
-        service.sendFriendRequest(requesterId, { addresseeId }),
-      ).rejects.toThrow(ForbiddenException);
-      expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
-      expect(friendshipRepository.createIfAbsent).not.toHaveBeenCalled();
-    });
-
-    it('still rejects when the active room has no expiresAt at all (never treats missing expiry as expired)', async () => {
-      chatRoomRepository.findActiveByUserId.mockImplementation(async (userId: string) =>
-        userId === requesterId
-          ? {
-              id: 'room-1',
-              user1Id: requesterId,
-              user2Id: addresseeId,
-              isActive: true,
-              expiresAt: null,
-            }
-          : null,
-      );
-
-      await expect(
-        service.sendFriendRequest(requesterId, { addresseeId }),
-      ).rejects.toThrow(ForbiddenException);
-      expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
-    });
+    // Expiry-awareness for "is this an active room" now lives entirely in
+    // ChatRoomRepository.findActiveByUserId() itself (see
+    // matching/repositories/chat-room.repository.spec.ts) - it self-heals a stale
+    // isActive flag before ever returning a room, so hasActiveChatRoom() can just
+    // trust a non-null result unconditionally. No expiry-boundary test needed here
+    // anymore.
 
     it('rejects when the two users have never chatted together', async () => {
       chatRoomRepository.participatedInSameChatRoom.mockResolvedValue(false);

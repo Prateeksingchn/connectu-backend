@@ -131,58 +131,6 @@ describe('MatchingService', () => {
         estimatedWaitTime: '2 minutes',
       });
     });
-
-    // --- Expiry-awareness boundary ---
-    // joinQueue()'s "already in an active chat room" check calls
-    // ChatRoomRepository.findActiveByUserId(), which only filters on `isActive: true`
-    // and never looks at `expiresAt` on its own (unlike findValidActiveRoom(), used
-    // elsewhere, which self-heals a stale isActive flag). MatchingScheduler only
-    // sweeps expired rooms once a minute, so without special-casing this, a room
-    // that already passed its expiresAt but hasn't been swept yet would wrongly
-    // block re-queueing. joinQueue() now self-heals this itself: if the "active"
-    // room found is actually past its expiresAt, it calls expireRoom() and lets
-    // the user proceed instead of throwing.
-    it('self-heals and allows re-queueing when the "active" room has already passed its expiresAt but has not been swept by the scheduler yet', async () => {
-      redisService.isInMatchingQueue.mockResolvedValue(false);
-      chatRoomRepository.findActiveByUserId.mockResolvedValue({
-        id: 'room-1',
-        isActive: true,
-        expiresAt: new Date(Date.now() - 60_000), // expired a minute ago
-      });
-      usersRepository.findById.mockResolvedValue(user);
-      redisService.getQueueSize.mockResolvedValue(1);
-
-      await expect(service.joinQueue(userId)).resolves.toEqual(
-        expect.objectContaining({ queueSize: 1 }),
-      );
-      expect(chatRoomRepository.expireRoom).toHaveBeenCalledWith('room-1');
-      expect(redisService.addToMatchingQueue).toHaveBeenCalled();
-    });
-
-    it('still rejects re-queueing when the active room genuinely has not expired yet', async () => {
-      redisService.isInMatchingQueue.mockResolvedValue(false);
-      chatRoomRepository.findActiveByUserId.mockResolvedValue({
-        id: 'room-1',
-        isActive: true,
-        expiresAt: new Date(Date.now() + 60_000), // still 1 minute left
-      });
-
-      await expect(service.joinQueue(userId)).rejects.toThrow(ConflictException);
-      expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
-      expect(redisService.addToMatchingQueue).not.toHaveBeenCalled();
-    });
-
-    it('still rejects re-queueing when the active room has no expiresAt at all (never treats missing expiry as expired)', async () => {
-      redisService.isInMatchingQueue.mockResolvedValue(false);
-      chatRoomRepository.findActiveByUserId.mockResolvedValue({
-        id: 'room-1',
-        isActive: true,
-        expiresAt: null,
-      });
-
-      await expect(service.joinQueue(userId)).rejects.toThrow(ConflictException);
-      expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
-    });
   });
 
   describe('leaveQueue', () => {
