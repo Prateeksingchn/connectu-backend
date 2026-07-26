@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -31,6 +32,7 @@ export class AuthController {
     'Invalid gender ID',
   ])
   @ApiErrorResponse(409, 'Email already registered', 'Email already registered')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
@@ -42,6 +44,7 @@ export class AuthController {
   })
   @ApiWrappedResponse(LoginResponseDto, { description: 'Authenticated successfully' })
   @ApiErrorResponse(401, 'Email not found or password does not match', 'Invalid credentials')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);

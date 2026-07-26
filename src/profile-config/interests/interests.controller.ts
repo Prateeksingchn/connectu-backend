@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  ParseIntPipe,
   Delete,
   UseGuards,
 } from '@nestjs/common';
@@ -49,8 +50,8 @@ export class InterestsController {
     description: 'Interest found (data is null if no interest exists with that id)',
   })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findOne(id);
   }
 
   @ApiBearerAuth('access-token')
@@ -110,8 +111,8 @@ export class InterestsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateInterestDto) {
-    return this.service.update(+id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInterestDto) {
+    return this.service.update(id, dto);
   }
 
   @ApiBearerAuth('access-token')
@@ -134,7 +135,7 @@ export class InterestsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
   }
 }

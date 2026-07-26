@@ -102,32 +102,26 @@ export class FriendshipsService {
       );
     }
 
-    // Rule 4: Check if friendship already exists
-    const existingFriendship =
-      await this.friendshipRepository.findBetweenUsers(
-        requesterId,
-        addresseeId,
-      );
-    if (existingFriendship) {
-      if (existingFriendship.status === FriendshipStatus.ACCEPTED) {
+    // Rule 4: Atomically check-and-insert so concurrent A->B / B->A requests
+    // can't both pass the existence check and create mirrored PENDING rows.
+    const { friendship, created } = await this.friendshipRepository.createIfAbsent(
+      requesterId,
+      addresseeId,
+    );
+
+    if (!created) {
+      if (friendship.status === FriendshipStatus.ACCEPTED) {
         throw new ConflictException('Users are already friends');
       }
-      if (existingFriendship.status === FriendshipStatus.PENDING) {
+      if (friendship.status === FriendshipStatus.PENDING) {
         throw new ConflictException('Friend request already pending');
       }
-      if (existingFriendship.status === FriendshipStatus.REJECTED) {
+      if (friendship.status === FriendshipStatus.REJECTED) {
         throw new ConflictException(
           'Friend request was rejected and cannot be recreated',
         );
       }
     }
-
-    // Create friendship
-    const friendship = await this.friendshipRepository.create({
-      requesterId,
-      addresseeId,
-      status: FriendshipStatus.PENDING,
-    });
 
     this.logger.log(
       `Friend request sent: ${requesterId.substring(0, 8)} -> ${addresseeId.substring(0, 8)}`,

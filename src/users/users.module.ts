@@ -12,6 +12,8 @@ import { PassportModule } from '@nestjs/passport';
 import { RolesModule } from 'src/profile-config/roles/roles.module';
 import { GendersModule } from 'src/profile-config/genders/genders.module';
 import { FriendshipsModule } from '../friends/friendships/friendships.module';
+import { RedisModule } from '../redis/redis.module';
+import { WebSocketModule } from '../websocket/websocket.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { FriendshipsModule } from '../friends/friendships/friendships.module';
     GendersModule,
     PassportModule,
     FriendshipsModule,
+    RedisModule,
+    forwardRef(() => WebSocketModule),
   ],
   controllers: [UsersController],
   providers: [UsersService, UsersRepository, JwtAuthGuard, RolesGuard],

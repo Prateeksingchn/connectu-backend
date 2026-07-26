@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { WebSocketEvent } from './events/websocket.events';
 import { JoinRoomDto } from './dto/join-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -44,14 +45,15 @@ export class WebSocketGateway
     private readonly friendChatRoomRepository: FriendChatRoomRepository,
     private readonly anonymousIdentityService: AnonymousIdentityService,
     private readonly usersRepository: UsersRepository,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
    * Called when a client connects
    */
-  handleConnection(client: Socket): void {
+  async handleConnection(client: Socket): Promise<void> {
     this.logger.log(`[WebSocket] Client attempting connection: ${client.id}`);
-    
+
     // Get token from handshake to validate
     const token =
       client.handshake?.auth?.token ||
@@ -60,6 +62,25 @@ export class WebSocketGateway
 
     if (!token) {
       this.logger.error(`[WebSocket] ❌ Connection rejected: No token provided`);
+      client.disconnect(true);
+      return;
+    }
+
+    // Actually verify the token (same check WsJwtGuard performs per-handler) so an
+    // invalid/expired token is rejected at connection time instead of staying
+    // connected until the first guarded method call.
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      (client as any).userId = payload.sub;
+      (client as any).email = payload.email;
+      (client as any).role = payload.role;
+    } catch (error) {
+      this.logger.error(
+        `[WebSocket] ❌ Connection rejected: invalid token (${(error as Error).message})`,
+      );
       client.disconnect(true);
       return;
     }
@@ -81,9 +102,11 @@ export class WebSocketGateway
     this.logger.log(`[WebSocket] Client disconnected: ${client.id}`);
 
     // Find and remove user from connections
+    let disconnectedUserId: string | undefined;
     for (const [userId, socketId] of this.userConnections.entries()) {
       if (socketId === client.id) {
         this.userConnections.delete(userId);
+        disconnectedUserId = userId;
         this.logger.log(`[WebSocket] User offline: ${userId}`);
 
         // Notify others that user went offline
@@ -92,45 +115,54 @@ export class WebSocketGateway
       }
     }
 
-    // Remove from all rooms and clean up anonymous identities
+    if (disconnectedUserId) {
+      await this.removeUserFromRooms(disconnectedUserId);
+    }
+  }
+
+  /**
+   * Remove a user from every room they're a member of, notifying other members and
+   * clearing anonymous-identity state as needed. Shared by handleDisconnect() and
+   * disconnectUser()'s no-live-socket fallback so the two cleanup paths can't drift
+   * out of sync with each other.
+   */
+  private async removeUserFromRooms(userId: string): Promise<void> {
     for (const [roomId, members] of this.roomMemberships.entries()) {
-      for (const userId of members) {
-        if (this.userConnections.get(userId) === client.id) {
-          members.delete(userId);
+      if (!members.has(userId)) {
+        continue;
+      }
+      members.delete(userId);
 
-          // Get display name (real name for friend rooms, anonymous for matching rooms)
-          const isFriendRoom = await this.isFriendChatRoom(roomId);
-          let displayName: string | null = null;
-          
-          if (isFriendRoom) {
-            const user = await this.usersRepository.findById(userId);
-            displayName = user ? user.name : null;
-          } else {
-            displayName = this.anonymousIdentityService.getAnonymousName(roomId, userId);
-            // Remove anonymous identity for matching rooms
-            if (displayName) {
-              this.anonymousIdentityService.removeAnonymousName(roomId, userId);
-            }
-          }
+      // Get display name (real name for friend rooms, anonymous for matching rooms)
+      const isFriendRoom = await this.isFriendChatRoom(roomId);
+      let displayName: string | null = null;
 
-          // Notify room members
-          if (displayName) {
-            this.server.to(roomId).emit(WebSocketEvent.USER_LEFT, {
-              anonymousName: displayName,
-              senderName: displayName,
-              roomId,
-              timestamp: new Date(),
-            });
-          }
+      if (isFriendRoom) {
+        const user = await this.usersRepository.findById(userId);
+        displayName = user ? user.name : null;
+      } else {
+        displayName = this.anonymousIdentityService.getAnonymousName(roomId, userId);
+        // Remove anonymous identity for matching rooms
+        if (displayName) {
+          this.anonymousIdentityService.removeAnonymousName(roomId, userId);
+        }
+      }
 
-          if (members.size === 0) {
-            this.roomMemberships.delete(roomId);
-            // Clean up all anonymous identities for matching rooms only
-            if (!isFriendRoom) {
-              this.anonymousIdentityService.clearRoomIdentities(roomId);
-            }
-          }
-          break;
+      // Notify room members
+      if (displayName) {
+        this.server.to(roomId).emit(WebSocketEvent.USER_LEFT, {
+          anonymousName: displayName,
+          senderName: displayName,
+          roomId,
+          timestamp: new Date(),
+        });
+      }
+
+      if (members.size === 0) {
+        this.roomMemberships.delete(roomId);
+        // Clean up all anonymous identities for matching rooms only
+        if (!isFriendRoom) {
+          this.anonymousIdentityService.clearRoomIdentities(roomId);
         }
       }
     }
@@ -141,11 +173,8 @@ export class WebSocketGateway
    */
   @UseGuards(WsJwtGuard)
   @SubscribeMessage(WebSocketEvent.USER_ONLINE)
-  handleUserOnline(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string },
-  ): void {
-    const { userId } = data;
+  handleUserOnline(@ConnectedSocket() client: Socket): void {
+    const userId = (client as any).userId as string; // Set by WsJwtGuard from JWT
 
     // Store user connection
     this.userConnections.set(userId, client.id);
@@ -459,6 +488,42 @@ export class WebSocketGateway
    */
   removeRoomMembership(roomId: string): void {
     this.roomMemberships.delete(roomId);
+  }
+
+  /**
+   * Force-disconnect a user's socket (if currently connected) and drop any
+   * in-memory connection/room-membership state for them. Used when a user
+   * account is deleted so no stale gateway state outlives the user row.
+   * When there's a live socket, handleDisconnect() performs the actual
+   * room/anonymous-identity cleanup once the socket disconnect event fires.
+   * When there isn't (stale tracking, socket already gone), no disconnect
+   * event will ever fire for it, so the fallback below replicates that same
+   * cleanup - room membership, anonymous identities, and the USER_LEFT
+   * notification to other room members - via removeUserFromRooms().
+   */
+  disconnectUser(userId: string): void {
+    const socketId = this.userConnections.get(userId);
+    if (!socketId) {
+      return;
+    }
+
+    // `server.sockets` is typed as a Namespace, but with `namespace: '/'` configured on this
+    // gateway, Nest injects the namespace itself here - whose own `.sockets` is the
+    // Map<SocketId, Socket> of connected sockets, not `server.sockets.sockets`.
+    const sockets = this.server?.sockets as unknown as Map<string, Socket> | undefined;
+    const socket = sockets?.get(socketId);
+    if (socket) {
+      socket.disconnect(true);
+    } else {
+      // No live socket object (e.g. already gone) - clear tracking directly and
+      // run the same room/identity cleanup handleDisconnect() would have done.
+      this.userConnections.delete(userId);
+      this.removeUserFromRooms(userId).catch((error) => {
+        this.logger.error(
+          `[WebSocket] Failed to clean up room state for disconnected user ${userId}: ${(error as Error).message}`,
+        );
+      });
+    }
   }
 
   /**

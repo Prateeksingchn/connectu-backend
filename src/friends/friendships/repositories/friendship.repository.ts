@@ -23,6 +23,48 @@ export class FriendshipRepository {
     return this.repo.save(friendship);
   }
 
+  /**
+   * Atomically check-and-insert a PENDING friendship between two users.
+   *
+   * Guards against the race where near-simultaneous requesterId->addresseeId and
+   * addresseeId->requesterId requests both pass a check-then-act read and each create
+   * their own (mirrored) row. A Postgres advisory lock keyed on the sorted user pair
+   * serializes concurrent callers for the same pair of users for the duration of the
+   * transaction, so the second caller's existence check runs only after the first
+   * caller's insert has committed (or rolled back).
+   */
+  async createIfAbsent(
+    requesterId: string,
+    addresseeId: string,
+  ): Promise<{ friendship: Friendship; created: boolean }> {
+    return this.repo.manager.transaction(async (manager) => {
+      const [a, b] = [requesterId, addresseeId].sort();
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [
+        `${a}:${b}`,
+      ]);
+
+      const existing = await manager.findOne(Friendship, {
+        where: [
+          { requesterId, addresseeId },
+          { requesterId: addresseeId, addresseeId: requesterId },
+        ],
+        relations: ['requester', 'addressee'],
+      });
+
+      if (existing) {
+        return { friendship: existing, created: false };
+      }
+
+      const friendship = manager.create(Friendship, {
+        requesterId,
+        addresseeId,
+        status: FriendshipStatus.PENDING,
+      });
+      const saved = await manager.save(Friendship, friendship);
+      return { friendship: saved, created: true };
+    });
+  }
+
   async findById(id: string): Promise<Friendship | null> {
     return this.repo.findOne({
       where: { id },

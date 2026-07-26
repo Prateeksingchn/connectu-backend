@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -39,6 +41,14 @@ import { FriendChatRoom } from './friends/chat-rooms/entities/friend-chat-room.e
       logging: true,
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        // Default global limit: 60 requests per minute per IP.
+        name: 'default',
+        ttl: 60_000,
+        limit: 60,
+      },
+    ]),
     RedisModule,
     UsersModule,
     AuthModule,
@@ -46,6 +56,12 @@ import { FriendChatRoom } from './friends/chat-rooms/entities/friend-chat-room.e
     WebSocketModule,
     MatchingModule,
     FriendsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

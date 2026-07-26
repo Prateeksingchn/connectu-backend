@@ -36,7 +36,7 @@ export class ChatRoomRequest {
     description: 'The user who initiated the chat room request.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'requesterId' })
   requester: User;
 
@@ -52,7 +52,7 @@ export class ChatRoomRequest {
     description: 'The friend who received the chat room request.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addresseeId' })
   addressee: User;
 

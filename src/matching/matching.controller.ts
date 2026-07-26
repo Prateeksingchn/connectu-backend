@@ -1,4 +1,5 @@
-import { Controller, Post, Delete, UseGuards, Param } from '@nestjs/common';
+import { Controller, Post, Delete, UseGuards, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -56,6 +57,7 @@ export class MatchingController {
     'You are already in an active chat room',
   )
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('join-queue')
   async joinQueue(@CurrentUser() user: any) {
     return this.matchingService.joinQueue(user.id);
@@ -134,7 +136,7 @@ export class MatchingController {
   )
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
   @Delete('end-chat-room/:id')
-  async endChatRoom(@Param('id') id: string, @CurrentUser() user: any) {
+  async endChatRoom(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.matchingService.endActiveChatRoom(id, user.id);
   }
 }

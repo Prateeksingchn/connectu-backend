@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  ParseUUIDPipe,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -51,7 +52,7 @@ export class ChatRoomsController {
   @Post(':friendId')
   async createChatRoomRequest(
     @CurrentUser() user: any,
-    @Param('friendId') friendId: string,
+    @Param('friendId', ParseUUIDPipe) friendId: string,
   ) {
     return this.chatRoomRequestService.createChatRoomRequest(
       user.id,
@@ -116,7 +117,7 @@ export class ChatRoomsController {
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
   @Delete(':roomId')
   async endFriendChatRoom(
-    @Param('roomId') roomId: string,
+    @Param('roomId', ParseUUIDPipe) roomId: string,
     @CurrentUser() user: any,
   ) {
     return this.friendChatRoomService.endFriendChatRoom(roomId, user.id);

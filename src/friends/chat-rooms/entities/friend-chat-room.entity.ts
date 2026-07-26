@@ -36,7 +36,7 @@ export class FriendChatRoom {
     description: 'The friendship this chat room belongs to.',
     type: () => Friendship,
   })
-  @ManyToOne(() => Friendship)
+  @ManyToOne(() => Friendship, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'friendshipId' })
   friendship: Friendship;
 
@@ -52,7 +52,7 @@ export class FriendChatRoom {
     description: 'The first participant of the chat room.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user1Id' })
   user1: User;
 
@@ -68,7 +68,7 @@ export class FriendChatRoom {
     description: 'The second participant of the chat room.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user2Id' })
   user2: User;
 

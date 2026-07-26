@@ -14,6 +14,7 @@ import { FriendshipStatus } from './friendship-status.enum';
 
 @Entity('friendships')
 @Index(['requesterId', 'addresseeId'], { unique: true })
+@Index(['addresseeId', 'status'])
 export class Friendship {
   @ApiProperty({
     description: 'Unique identifier of the friendship/friend-request record.',
@@ -35,7 +36,7 @@ export class Friendship {
     description: 'The user who sent the friend request.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'requesterId' })
   requester: User;
 
@@ -51,7 +52,7 @@ export class Friendship {
     description: 'The user who received the friend request.',
     type: () => User,
   })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'addresseeId' })
   addressee: User;
 

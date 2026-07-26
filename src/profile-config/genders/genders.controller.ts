@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Patch,
   UseGuards,
@@ -95,11 +96,8 @@ export class GendersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: CreateGenderDto) {
-    // Explicitly convert route param to number
-    const genderId = Number(id);
-    return this.gendersService.update(genderId, dto);
-
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateGenderDto) {
+    return this.gendersService.update(id, dto);
   }
 
   @ApiBearerAuth('access-token')
@@ -121,10 +119,8 @@ export class GendersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    // Explicitly convert route param to number
-    const genderId = Number(id);
-    return this.gendersService.remove(genderId);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.gendersService.remove(id);
   }
 }
 

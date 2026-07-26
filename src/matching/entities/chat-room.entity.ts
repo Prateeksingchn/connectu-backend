@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../users/user.entity';
 
 @Entity('chat_rooms')
+@Index(['isActive', 'expiresAt'])
 export class ChatRoom {
   @ApiProperty({
     description: 'Chat room id',
@@ -22,10 +24,11 @@ export class ChatRoom {
     description: 'Id of the first matched participant',
     example: 'a1b2c3d4-e5f6-4a1b-8c9d-0e1f2a3b4c5d',
   })
+  @Index()
   @Column({ type: 'uuid' })
   user1Id: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user1Id' })
   user1: User;
 
@@ -33,10 +36,11 @@ export class ChatRoom {
     description: 'Id of the second matched participant',
     example: 'f6e5d4c3-b2a1-4d5e-9f8a-7b6c5d4e3f2a',
   })
+  @Index()
   @Column({ type: 'uuid' })
   user2Id: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user2Id' })
   user2: User;
 
