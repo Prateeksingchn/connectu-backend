@@ -17,6 +17,7 @@ import { ChatRoom } from '../matching/entities/chat-room.entity';
 import { Friendship } from '../friends/friendships/entities/friendship.entity';
 import { ChatRoomRequest } from '../friends/chat-rooms/entities/chat-room-request.entity';
 import { FriendChatRoom } from '../friends/chat-rooms/entities/friend-chat-room.entity';
+import { ChatMessage } from '../friends/chat-rooms/entities/chat-message.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
@@ -36,6 +37,7 @@ export const dataSourceOptions: DataSourceOptions = {
     Friendship,
     ChatRoomRequest,
     FriendChatRoom,
+    ChatMessage,
   ],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,

@@ -4,6 +4,7 @@ import { WebSocketGateway } from './websocket.gateway';
 import { WebSocketEvent } from './events/websocket.events';
 import { ChatRoomRepository } from '../matching/repositories/chat-room.repository';
 import { FriendChatRoomRepository } from '../friends/chat-rooms/repositories/friend-chat-room.repository';
+import { ChatMessageService } from '../friends/chat-rooms/chat-message.service';
 import { AnonymousIdentityService } from './services/anonymous-identity.service';
 import { UsersRepository } from '../users/users.repository';
 
@@ -31,6 +32,7 @@ describe('WebSocketGateway', () => {
   let gateway: WebSocketGateway;
   let chatRoomRepository: { findValidActiveRoom: jest.Mock };
   let friendChatRoomRepository: { findValidActiveRoom: jest.Mock };
+  let chatMessageService: { saveMessage: jest.Mock };
   let anonymousIdentityService: {
     getAnonymousName: jest.Mock;
     assignAnonymousName: jest.Mock;
@@ -44,6 +46,7 @@ describe('WebSocketGateway', () => {
   beforeEach(async () => {
     chatRoomRepository = { findValidActiveRoom: jest.fn() };
     friendChatRoomRepository = { findValidActiveRoom: jest.fn() };
+    chatMessageService = { saveMessage: jest.fn() };
     anonymousIdentityService = {
       getAnonymousName: jest.fn(),
       assignAnonymousName: jest.fn(),
@@ -58,6 +61,7 @@ describe('WebSocketGateway', () => {
         WebSocketGateway,
         { provide: ChatRoomRepository, useValue: chatRoomRepository },
         { provide: FriendChatRoomRepository, useValue: friendChatRoomRepository },
+        { provide: ChatMessageService, useValue: chatMessageService },
         { provide: AnonymousIdentityService, useValue: anonymousIdentityService },
         { provide: UsersRepository, useValue: usersRepository },
         { provide: JwtService, useValue: jwtService },
@@ -337,6 +341,49 @@ describe('WebSocketGateway', () => {
       expect(client.to('room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_JOINED,
         expect.objectContaining({ anonymousName: 'BraveOtter' }),
+      );
+    });
+  });
+
+  describe('handleSendMessage', () => {
+    it('does NOT persist a message sent in an anonymous matching chat room', async () => {
+      const client = createMockSocket('socket-1');
+      (client as any).userId = 'user-1';
+      chatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'room-1' });
+      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
+      anonymousIdentityService.getAnonymousName.mockReturnValue('WittyFox');
+
+      await gateway.handleSendMessage(client, { roomId: 'room-1', message: 'hello' });
+
+      expect(chatMessageService.saveMessage).not.toHaveBeenCalled();
+      expect(server.to).toHaveBeenCalledWith('room-1');
+      expect(server.to('room-1').emit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ message: 'hello' }),
+      );
+    });
+
+    it('DOES persist a message sent in a friend chat room', async () => {
+      const client = createMockSocket('socket-1');
+      (client as any).userId = 'user-1';
+      chatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
+      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'friend-room-1' });
+      usersRepository.findById.mockResolvedValue({ id: 'user-1', name: 'Alice' });
+
+      await gateway.handleSendMessage(client, {
+        roomId: 'friend-room-1',
+        message: 'hello friend',
+      });
+
+      expect(chatMessageService.saveMessage).toHaveBeenCalledWith(
+        'friend-room-1',
+        'user-1',
+        'hello friend',
+      );
+      expect(server.to).toHaveBeenCalledWith('friend-room-1');
+      expect(server.to('friend-room-1').emit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ message: 'hello friend' }),
       );
     });
   });

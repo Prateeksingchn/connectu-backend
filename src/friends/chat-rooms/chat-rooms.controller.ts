@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   ParseUUIDPipe,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -14,9 +15,11 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ChatRoomRequestService } from './chat-room-request.service';
 import { FriendChatRoomService } from './friend-chat-room.service';
+import { ChatMessageService } from './chat-message.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RespondChatRoomRequestDto } from './dto/respond-chat-room-request.dto';
+import { GetChatMessagesDto } from './dto/get-chat-messages.dto';
 import {
   ApiErrorResponse,
   ApiWrappedOkResponse,
@@ -31,6 +34,7 @@ export class ChatRoomsController {
   constructor(
     private readonly chatRoomRequestService: ChatRoomRequestService,
     private readonly friendChatRoomService: FriendChatRoomService,
+    private readonly chatMessageService: ChatMessageService,
   ) {}
 
   @ApiOperation({
@@ -143,6 +147,42 @@ export class ChatRoomsController {
   @Get()
   async getActiveFriendChatRooms(@CurrentUser() user: any) {
     return this.friendChatRoomService.getActiveFriendChatRooms(user.id);
+  }
+
+  @ApiOperation({
+    summary: 'Get paginated message history for a friend chat room',
+    description:
+      'Returns messages for a friend chat room, newest first, cursor-paginated. Only a participant (user1 or user2) of the room may read its messages. ' +
+      'Anonymous matching chat rooms have no persisted history and are not accessible through this endpoint.',
+  })
+  @ApiParam({ name: 'roomId', description: 'ID of the friend chat room to read messages from', example: 'e6c4f2a1-7e4d-4b2d-af5d-4567890123de' })
+  @ApiWrappedOkResponse({
+    description: 'Page of messages, newest first',
+    example: [
+      {
+        id: 'f1a2b3c4-5d6e-4f7a-8b9c-0d1e2f3a4b5c',
+        roomId: 'e6c4f2a1-7e4d-4b2d-af5d-4567890123de',
+        senderId: '11111111-1111-4111-8111-111111111111',
+        content: 'See you tomorrow!',
+        createdAt: '2026-07-24T18:30:00.000Z',
+      },
+    ],
+  })
+  @ApiErrorResponse(400, 'No friend chat room exists with the given ID', 'Friend chat room not found')
+  @ApiErrorResponse(403, 'The current user is not a participant in this chat room', 'You are not authorized to view this chat room')
+  @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @Get(':roomId/messages')
+  async getChatMessages(
+    @Param('roomId', ParseUUIDPipe) roomId: string,
+    @Query() query: GetChatMessagesDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.chatMessageService.findByRoomId(
+      roomId,
+      user.id,
+      query.limit,
+      query.before ? new Date(query.before) : undefined,
+    );
   }
 }
 

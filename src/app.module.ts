@@ -21,6 +21,7 @@ import { FriendsModule } from './friends/friends.module';
 import { Friendship } from './friends/friendships/entities/friendship.entity';
 import { ChatRoomRequest } from './friends/chat-rooms/entities/chat-room-request.entity';
 import { FriendChatRoom } from './friends/chat-rooms/entities/friend-chat-room.entity';
+import { ChatMessage } from './friends/chat-rooms/entities/chat-message.entity';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { FriendChatRoom } from './friends/chat-rooms/entities/friend-chat-room.e
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Role, Gender, Interest, Hobby, TechStack, ChatRoom, Friendship, ChatRoomRequest, FriendChatRoom],
+      entities: [User, Role, Gender, Interest, Hobby, TechStack, ChatRoom, Friendship, ChatRoomRequest, FriendChatRoom, ChatMessage],
       migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
       migrationsRun: true,
       synchronize: false,

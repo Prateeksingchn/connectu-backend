@@ -16,6 +16,7 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
 import { ChatRoomRepository } from '../matching/repositories/chat-room.repository';
 import { FriendChatRoomRepository } from '../friends/chat-rooms/repositories/friend-chat-room.repository';
+import { ChatMessageService } from '../friends/chat-rooms/chat-message.service';
 import { AnonymousIdentityService } from './services/anonymous-identity.service';
 import { UsersRepository } from '../users/users.repository';
 
@@ -43,6 +44,7 @@ export class WebSocketGateway
   constructor(
     private readonly chatRoomRepository: ChatRoomRepository,
     private readonly friendChatRoomRepository: FriendChatRoomRepository,
+    private readonly chatMessageService: ChatMessageService,
     private readonly anonymousIdentityService: AnonymousIdentityService,
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
@@ -350,6 +352,15 @@ export class WebSocketGateway
           message: 'You must join the room before sending messages',
         });
         return;
+      }
+
+      // Persist only for friend chat rooms - anonymous matching chat rooms must
+      // remain fully ephemeral. This is a runtime check (not type-enforced), so
+      // it must gate the persistence call directly rather than being inferred
+      // from anything else in this handler.
+      const isFriendRoom = await this.isFriendChatRoom(roomId);
+      if (isFriendRoom) {
+        await this.chatMessageService.saveMessage(roomId, userId, message);
       }
 
       // Message payload - includes display name (real or anonymous)

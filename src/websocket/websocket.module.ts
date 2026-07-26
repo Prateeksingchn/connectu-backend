@@ -10,12 +10,14 @@ import { FriendChatRoom } from '../friends/chat-rooms/entities/friend-chat-room.
 import { FriendChatRoomRepository } from '../friends/chat-rooms/repositories/friend-chat-room.repository';
 import { AnonymousIdentityService } from './services/anonymous-identity.service';
 import { UsersModule } from '../users/users.module';
+import { ChatRoomsModule } from '../friends/chat-rooms/chat-rooms.module';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([ChatRoom, FriendChatRoom]),
     forwardRef(() => UsersModule),
+    forwardRef(() => ChatRoomsModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
