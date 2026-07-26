@@ -10,7 +10,10 @@ import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    cors: true, // Enable CORS (including for WebSocket upgrades)
+    cors: {
+      origin: 'http://localhost:3000', // frontend dev origin
+      credentials: true,
+    },
   });
 
   // Use Socket.IO adapter instead of native WebSocket
@@ -63,7 +66,7 @@ async function bootstrap() {
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 4000);
   // eslint-disable-next-line no-console
   console.log(`Application is running on: ${await app.getUrl()}`);
 }

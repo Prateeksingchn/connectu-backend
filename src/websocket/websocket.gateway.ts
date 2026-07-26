@@ -20,7 +20,7 @@ import { UsersRepository } from '../users/users.repository';
 
 @NestWebSocketGateway({
   cors: {
-    origin: '*', // TODO: Restrict to frontend URL in production
+    origin: 'http://localhost:3000', // frontend dev origin
     credentials: true,
   },
   namespace: '/', // Default namespace
