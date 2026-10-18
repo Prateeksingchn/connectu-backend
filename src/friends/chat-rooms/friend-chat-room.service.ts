@@ -25,8 +25,7 @@ export class FriendChatRoomService {
     userId: string,
   ): Promise<{ message: string }> {
     // Verify the friend chat room exists and user is a participant
-    const friendChatRoom =
-      await this.friendChatRoomRepository.findById(roomId);
+    const friendChatRoom = await this.friendChatRoomRepository.findById(roomId);
 
     if (!friendChatRoom) {
       throw new BadRequestException('Friend chat room not found');
@@ -60,8 +59,7 @@ export class FriendChatRoomService {
       await this.friendChatRoomRepository.findActiveByUserId(userId);
 
     return rooms.map((room) => {
-      const friend =
-        room.user1Id === userId ? room.user2 : room.user1;
+      const friend = room.user1Id === userId ? room.user2 : room.user1;
 
       return {
         roomId: room.id,
@@ -80,10 +78,7 @@ export class FriendChatRoomService {
   /**
    * Update last message in friend chat room
    */
-  async updateLastMessage(
-    roomId: string,
-    messageText: string,
-  ): Promise<void> {
+  async updateLastMessage(roomId: string, messageText: string): Promise<void> {
     await this.friendChatRoomRepository.updateLastMessage(
       roomId,
       messageText,
@@ -91,4 +86,3 @@ export class FriendChatRoomService {
     );
   }
 }
-

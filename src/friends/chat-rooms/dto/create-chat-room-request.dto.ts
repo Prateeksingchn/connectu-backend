@@ -11,4 +11,3 @@ export class CreateChatRoomRequestDto {
   @IsUUID()
   friendId: string;
 }
-

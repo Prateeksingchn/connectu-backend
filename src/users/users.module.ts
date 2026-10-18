@@ -30,4 +30,3 @@ import { WebSocketModule } from '../websocket/websocket.module';
   exports: [UsersService, UsersRepository],
 })
 export class UsersModule {}
-  

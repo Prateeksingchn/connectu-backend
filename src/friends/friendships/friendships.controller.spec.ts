@@ -30,7 +30,10 @@ describe('FriendshipsController', () => {
 
   it('sendFriendRequest delegates to the service with the current user id and dto', async () => {
     const dto = { addresseeId: 'user-2' };
-    service.sendFriendRequest.mockResolvedValue({ message: 'ok', friendshipId: 'f-1' });
+    service.sendFriendRequest.mockResolvedValue({
+      message: 'ok',
+      friendshipId: 'f-1',
+    });
 
     const result = await controller.sendFriendRequest(user, dto);
 

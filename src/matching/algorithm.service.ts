@@ -25,7 +25,7 @@ export class AlgorithmService {
       user1.techStack,
       user2.techStack,
     );
-    
+
     const score =
       commonInterests.length + commonHobbies.length + commonTechStack.length;
 
@@ -54,7 +54,7 @@ export class AlgorithmService {
       user: candidate,
       score: this.calculateScore(currentUser, candidate),
     }));
-    
+
     // Sort by score (descending), then by queue position (FIFO for ties)
     scoredCandidates.sort((a, b) => {
       if (b.score !== a.score) {
@@ -79,4 +79,3 @@ export class AlgorithmService {
     return arr1.filter((item) => arr2.includes(item));
   }
 }
-

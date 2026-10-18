@@ -23,12 +23,12 @@ export class ChatRoomRepository {
       expiresAt: data.expiresAt,
       isActive: data.isActive !== undefined ? data.isActive : true,
     };
-    
+
     // Only include matchScore if it's not null
     if (data.matchScore !== null) {
       roomData.matchScore = data.matchScore;
     }
-    
+
     const room = this.repo.create(roomData);
     return this.repo.save(room);
   }
@@ -60,7 +60,9 @@ export class ChatRoomRepository {
       return null;
     }
 
-    const expiresAt = room.expiresAt ? new Date(room.expiresAt).getTime() : null;
+    const expiresAt = room.expiresAt
+      ? new Date(room.expiresAt).getTime()
+      : null;
     if (expiresAt && expiresAt <= Date.now()) {
       await this.expireRoom(room.id);
       return null;
@@ -73,7 +75,11 @@ export class ChatRoomRepository {
     await this.repo.update(id, { isActive: false });
   }
 
-  async endActiveChatRoom(id: string, user1Id: string, user2Id: string): Promise<void> {
+  async endActiveChatRoom(
+    id: string,
+    user1Id: string,
+    user2Id: string,
+  ): Promise<void> {
     await this.repo.update(id, { isActive: false });
   }
 
@@ -92,7 +98,9 @@ export class ChatRoomRepository {
       return null;
     }
 
-    const expiresAt = room.expiresAt ? new Date(room.expiresAt).getTime() : null;
+    const expiresAt = room.expiresAt
+      ? new Date(room.expiresAt).getTime()
+      : null;
 
     if (expiresAt && expiresAt <= Date.now()) {
       // Mark as expired; callers should treat as non-existent/expired

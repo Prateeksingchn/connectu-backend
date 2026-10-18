@@ -9,7 +9,7 @@ export class UsersRepository {
     @InjectRepository(User)
     private readonly repo: Repository<User>,
   ) {}
-  
+
   create(user: User): Promise<User> {
     return this.repo.save(user);
   }

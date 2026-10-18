@@ -39,9 +39,10 @@ export class FriendshipRepository {
   ): Promise<{ friendship: Friendship; created: boolean }> {
     return this.repo.manager.transaction(async (manager) => {
       const [a, b] = [requesterId, addresseeId].sort();
-      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [
-        `${a}:${b}`,
-      ]);
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1)::bigint)',
+        [`${a}:${b}`],
+      );
 
       const existing = await manager.findOne(Friendship, {
         where: [
@@ -93,10 +94,7 @@ export class FriendshipRepository {
    */
   async findByUser(userId: string): Promise<Friendship[]> {
     return this.repo.find({
-      where: [
-        { requesterId: userId },
-        { addresseeId: userId },
-      ],
+      where: [{ requesterId: userId }, { addresseeId: userId }],
       relations: ['requester', 'addressee'],
     });
   }
@@ -130,10 +128,7 @@ export class FriendshipRepository {
   /**
    * Update friendship status
    */
-  async updateStatus(
-    id: string,
-    status: FriendshipStatus,
-  ): Promise<boolean> {
+  async updateStatus(id: string, status: FriendshipStatus): Promise<boolean> {
     const result = await this.repo.update(id, { status });
     return result.affected !== undefined && result.affected > 0;
   }
@@ -141,10 +136,7 @@ export class FriendshipRepository {
   /**
    * Check if friendship exists between two users (any status)
    */
-  async existsBetweenUsers(
-    userId1: string,
-    userId2: string,
-  ): Promise<boolean> {
+  async existsBetweenUsers(userId1: string, userId2: string): Promise<boolean> {
     const count = await this.repo.count({
       where: [
         { requesterId: userId1, addresseeId: userId2 },
@@ -154,4 +146,3 @@ export class FriendshipRepository {
     return count > 0;
   }
 }
-

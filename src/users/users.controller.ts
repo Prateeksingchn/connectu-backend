@@ -15,7 +15,10 @@ import { RoleName } from 'src/profile-config/roles/role.enum';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from './user.entity';
 import { MessageResponseDto } from '../common/dto/message-response.dto';
-import { ApiErrorResponse, ApiWrappedResponse } from '../common/decorators/api-response.decorator';
+import {
+  ApiErrorResponse,
+  ApiWrappedResponse,
+} from '../common/decorators/api-response.decorator';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
@@ -26,11 +29,16 @@ export class UsersController {
 
   @ApiOperation({
     summary: 'List all users (admin only)',
-    description: 'Returns every user with their gender/interests/hobbies/tech-stack relations loaded.',
+    description:
+      'Returns every user with their gender/interests/hobbies/tech-stack relations loaded.',
   })
   @ApiWrappedResponse(User, { isArray: true, description: 'All users' })
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
-  @ApiErrorResponse(403, 'Authenticated user is not an ADMIN', 'Forbidden resource')
+  @ApiErrorResponse(
+    403,
+    'Authenticated user is not an ADMIN',
+    'Forbidden resource',
+  )
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
   @Get()
@@ -41,7 +49,7 @@ export class UsersController {
   @ApiOperation({
     summary: "Get a user's profile with friendship-gated access control",
     description:
-      'A user can always view their own profile. Viewing another user\'s profile is only allowed once the two ' +
+      "A user can always view their own profile. Viewing another user's profile is only allowed once the two " +
       'users have an ACCEPTED friendship — otherwise the request is rejected even though both users are authenticated.',
   })
   @ApiWrappedResponse(User, { description: 'Target user profile' })
@@ -62,11 +70,16 @@ export class UsersController {
 
   @ApiOperation({
     summary: 'Get a single user by id (admin only)',
-    description: 'Fetches any user by id, including their gender/interests/hobbies/tech-stack relations.',
+    description:
+      'Fetches any user by id, including their gender/interests/hobbies/tech-stack relations.',
   })
   @ApiWrappedResponse(User, { description: 'User found' })
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
-  @ApiErrorResponse(403, 'Authenticated user is not an ADMIN', 'Forbidden resource')
+  @ApiErrorResponse(
+    403,
+    'Authenticated user is not an ADMIN',
+    'Forbidden resource',
+  )
   @ApiErrorResponse(404, 'No user with the given id', 'User not found')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
@@ -77,11 +90,18 @@ export class UsersController {
 
   @ApiOperation({
     summary: 'Delete a user (admin only)',
-    description: 'Permanently removes the user record after confirming it exists.',
+    description:
+      'Permanently removes the user record after confirming it exists.',
   })
-  @ApiWrappedResponse(MessageResponseDto, { description: 'User removed successfully' })
+  @ApiWrappedResponse(MessageResponseDto, {
+    description: 'User removed successfully',
+  })
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
-  @ApiErrorResponse(403, 'Authenticated user is not an ADMIN', 'Forbidden resource')
+  @ApiErrorResponse(
+    403,
+    'Authenticated user is not an ADMIN',
+    'Forbidden resource',
+  )
   @ApiErrorResponse(404, 'No user with the given id', 'User not found')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)

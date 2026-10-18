@@ -9,7 +9,7 @@ export class GendersRepository {
     @InjectRepository(Gender)
     private readonly repo: Repository<Gender>,
   ) {}
-  
+
   // create(gender: Gender): Promise<Gender> {
   //   return this.repo.save(gender);
   // }
@@ -18,7 +18,6 @@ export class GendersRepository {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
-  
 
   findAll(): Promise<Gender[]> {
     return this.repo.find();
@@ -40,4 +39,3 @@ export class GendersRepository {
     return this.repo.delete(Number(id));
   }
 }
-

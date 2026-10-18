@@ -58,7 +58,10 @@ describe('MatchingService', () => {
         { provide: ChatRoomRepository, useValue: chatRoomRepository },
         { provide: AlgorithmService, useValue: algorithmService },
         { provide: WebSocketGateway, useValue: wsGateway },
-        { provide: AnonymousIdentityService, useValue: anonymousIdentityService },
+        {
+          provide: AnonymousIdentityService,
+          useValue: anonymousIdentityService,
+        },
       ],
     }).compile();
 
@@ -81,7 +84,9 @@ describe('MatchingService', () => {
     it('rejects when the user is already in the matching queue', async () => {
       redisService.isInMatchingQueue.mockResolvedValue(true);
 
-      await expect(service.joinQueue(userId)).rejects.toThrow(ConflictException);
+      await expect(service.joinQueue(userId)).rejects.toThrow(
+        ConflictException,
+      );
       expect(chatRoomRepository.findActiveByUserId).not.toHaveBeenCalled();
     });
 
@@ -92,7 +97,9 @@ describe('MatchingService', () => {
         isActive: true,
       });
 
-      await expect(service.joinQueue(userId)).rejects.toThrow(ConflictException);
+      await expect(service.joinQueue(userId)).rejects.toThrow(
+        ConflictException,
+      );
       expect(redisService.addToMatchingQueue).not.toHaveBeenCalled();
     });
 
@@ -107,7 +114,9 @@ describe('MatchingService', () => {
       chatRoomRepository.findActiveByUserId.mockResolvedValue(null);
       usersRepository.findById.mockResolvedValue(null);
 
-      await expect(service.joinQueue(userId)).rejects.toThrow(BadRequestException);
+      await expect(service.joinQueue(userId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('adds the user to the queue with their profile data on the happy path', async () => {
@@ -137,7 +146,9 @@ describe('MatchingService', () => {
     it('rejects when the user is not in the queue', async () => {
       redisService.isInMatchingQueue.mockResolvedValue(false);
 
-      await expect(service.leaveQueue('user-1')).rejects.toThrow(BadRequestException);
+      await expect(service.leaveQueue('user-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(redisService.removeFromMatchingQueue).not.toHaveBeenCalled();
     });
 
@@ -146,13 +157,20 @@ describe('MatchingService', () => {
 
       const result = await service.leaveQueue('user-1');
 
-      expect(redisService.removeFromMatchingQueue).toHaveBeenCalledWith(['user-1']);
+      expect(redisService.removeFromMatchingQueue).toHaveBeenCalledWith([
+        'user-1',
+      ]);
       expect(result).toEqual({ message: 'Left matching queue successfully' });
     });
   });
 
   describe('findBestMatchForUser (createMatch)', () => {
-    const user = { userId: 'user-1', interests: [1], hobbies: [2], techStack: [3] };
+    const user = {
+      userId: 'user-1',
+      interests: [1],
+      hobbies: [2],
+      techStack: [3],
+    };
     const candidate = {
       userId: 'user-2',
       interests: [1],
@@ -207,8 +225,16 @@ describe('MatchingService', () => {
         expect.objectContaining({ user1Id: 'user-1', user2Id: 'user-2' }),
         600,
       );
-      expect(redisService.setUserRoom).toHaveBeenCalledWith('user-1', 'room-1', 600);
-      expect(redisService.setUserRoom).toHaveBeenCalledWith('user-2', 'room-1', 600);
+      expect(redisService.setUserRoom).toHaveBeenCalledWith(
+        'user-1',
+        'room-1',
+        600,
+      );
+      expect(redisService.setUserRoom).toHaveBeenCalledWith(
+        'user-2',
+        'room-1',
+        600,
+      );
       expect(wsGateway.emitToUser).toHaveBeenCalledWith(
         'user-1',
         WebSocketEvent.MATCH_FOUND,
@@ -278,7 +304,10 @@ describe('MatchingService', () => {
     });
 
     it('returns false (idempotent) when the room is already inactive', async () => {
-      chatRoomRepository.findById.mockResolvedValue({ id: 'room-1', isActive: false });
+      chatRoomRepository.findById.mockResolvedValue({
+        id: 'room-1',
+        isActive: false,
+      });
 
       expect(await service.expireChatRoom('room-1')).toBe(false);
       expect(chatRoomRepository.expireRoom).not.toHaveBeenCalled();
@@ -324,7 +353,9 @@ describe('MatchingService', () => {
       expect(redisService.deleteActiveRoom).toHaveBeenCalledWith('room-1');
       expect(socketLeave).toHaveBeenCalledWith('room-1');
       expect(wsGateway.removeRoomMembership).toHaveBeenCalledWith('room-1');
-      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith('room-1');
+      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
+        'room-1',
+      );
       expect(wsGateway.emitToRoom).toHaveBeenCalledWith(
         'room-1',
         WebSocketEvent.CHAT_EXPIRED,
@@ -352,7 +383,10 @@ describe('MatchingService', () => {
     });
 
     it('returns false when the room is marked inactive', async () => {
-      chatRoomRepository.findById.mockResolvedValue({ id: 'room-1', isActive: false });
+      chatRoomRepository.findById.mockResolvedValue({
+        id: 'room-1',
+        isActive: false,
+      });
 
       expect(await service.isRoomActive('room-1')).toBe(false);
     });
@@ -382,6 +416,52 @@ describe('MatchingService', () => {
       expect(result).toBe(false);
       // isRoomActive proactively expires the stale room via expireChatRoom()
       expect(chatRoomRepository.expireRoom).toHaveBeenCalledWith('room-1');
+    });
+  });
+
+  describe('getActiveRoom', () => {
+    it('returns null when the user has no active room', async () => {
+      chatRoomRepository.findActiveByUserId.mockResolvedValue(null);
+
+      expect(await service.getActiveRoom('user-1')).toBeNull();
+    });
+
+    it('returns the room with the other participant derived when the caller is user1', async () => {
+      chatRoomRepository.findActiveByUserId.mockResolvedValue({
+        id: 'room-1',
+        user1Id: 'user-1',
+        user2Id: 'user-2',
+        matchScore: 5,
+        expiresAt: new Date('2026-07-26T18:40:00.000Z'),
+      });
+
+      const result = await service.getActiveRoom('user-1');
+
+      expect(result).toEqual({
+        roomId: 'room-1',
+        otherUserId: 'user-2',
+        matchScore: 5,
+        expiresAt: new Date('2026-07-26T18:40:00.000Z'),
+      });
+    });
+
+    it('derives the other participant correctly when the caller is user2', async () => {
+      chatRoomRepository.findActiveByUserId.mockResolvedValue({
+        id: 'room-1',
+        user1Id: 'user-1',
+        user2Id: 'user-2',
+        matchScore: null,
+        expiresAt: null,
+      });
+
+      const result = await service.getActiveRoom('user-2');
+
+      expect(result).toEqual({
+        roomId: 'room-1',
+        otherUserId: 'user-1',
+        matchScore: null,
+        expiresAt: null,
+      });
     });
   });
 });

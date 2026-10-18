@@ -12,7 +12,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       secretOrKey: process.env.JWT_SECRET!,
     });
   }
-  
+
   async validate(payload: { sub: string; email: string; role: string }) {
     const user = await this.authService.validateUser(payload.sub);
     if (!user) {
@@ -21,4 +21,3 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return { id: user.id, email: user.email, role: user.role };
   }
 }
-

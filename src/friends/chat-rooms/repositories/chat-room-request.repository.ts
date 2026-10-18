@@ -107,10 +107,7 @@ export class ChatRoomRequestRepository {
   /**
    * Check if chat room request exists between two users (any status)
    */
-  async existsBetweenUsers(
-    userId1: string,
-    userId2: string,
-  ): Promise<boolean> {
+  async existsBetweenUsers(userId1: string, userId2: string): Promise<boolean> {
     const count = await this.repo.count({
       where: [
         { requesterId: userId1, addresseeId: userId2 },
@@ -120,4 +117,3 @@ export class ChatRoomRequestRepository {
     return count > 0;
   }
 }
-

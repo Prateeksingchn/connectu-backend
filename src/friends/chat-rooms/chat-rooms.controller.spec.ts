@@ -35,11 +35,7 @@ describe('ChatRoomsController', () => {
         { id: 'msg-1', content: 'hi' },
       ]);
 
-      const result = await controller.getChatMessages(
-        'room-1',
-        {},
-        user,
-      );
+      const result = await controller.getChatMessages('room-1', {}, user);
 
       expect(chatMessageService.findByRoomId).toHaveBeenCalledWith(
         'room-1',

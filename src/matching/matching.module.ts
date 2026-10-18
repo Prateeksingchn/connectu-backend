@@ -1,4 +1,4 @@
-   import { Module, forwardRef } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatchingController } from './matching.controller';
@@ -17,11 +17,15 @@ import { WebSocketModule } from '../websocket/websocket.module';
     TypeOrmModule.forFeature([ChatRoom]),
     RedisModule,
     forwardRef(() => UsersModule),
-    WebSocketModule,
+    forwardRef(() => WebSocketModule),
   ],
   controllers: [MatchingController],
-  providers: [MatchingService, MatchingScheduler, AlgorithmService, ChatRoomRepository],
+  providers: [
+    MatchingService,
+    MatchingScheduler,
+    AlgorithmService,
+    ChatRoomRepository,
+  ],
   exports: [MatchingService, ChatRoomRepository],
 })
 export class MatchingModule {}
-

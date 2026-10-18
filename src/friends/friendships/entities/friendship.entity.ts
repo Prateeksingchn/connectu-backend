@@ -77,10 +77,10 @@ export class Friendship {
   createdAt: Date;
 
   @ApiProperty({
-    description: 'Timestamp when the friendship record was last updated (e.g. status change).',
+    description:
+      'Timestamp when the friendship record was last updated (e.g. status change).',
     example: '2026-07-21T09:00:00.000Z',
   })
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

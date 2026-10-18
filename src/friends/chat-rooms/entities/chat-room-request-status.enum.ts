@@ -3,4 +3,3 @@ export enum ChatRoomRequestStatus {
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
 }
-

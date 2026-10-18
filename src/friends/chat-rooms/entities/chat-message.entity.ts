@@ -23,7 +23,8 @@ export class ChatMessage {
   id: string;
 
   @ApiProperty({
-    description: 'ID of the friend chat room this message belongs to. Friend chat rooms only - anonymous matching chat rooms never persist messages.',
+    description:
+      'ID of the friend chat room this message belongs to. Friend chat rooms only - anonymous matching chat rooms never persist messages.',
     example: 'e6c4f2a1-7e4d-4b2d-af5d-4567890123de',
     format: 'uuid',
   })

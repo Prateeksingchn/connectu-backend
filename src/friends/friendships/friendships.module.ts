@@ -16,4 +16,3 @@ import { MatchingModule } from '../../matching/matching.module';
   exports: [FriendshipsService, FriendshipRepository],
 })
 export class FriendshipsModule {}
-

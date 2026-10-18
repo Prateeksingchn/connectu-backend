@@ -44,7 +44,7 @@ export class HobbiesController {
     summary: 'Get a hobby by id',
     description:
       'Looks up a single hobby by its numeric id. Public endpoint. Note: the service does not throw ' +
-      "NotFoundException — if no hobby matches, the response is still 200 with `data: null`.",
+      'NotFoundException — if no hobby matches, the response is still 200 with `data: null`.',
   })
   @ApiWrappedResponse(Hobby, {
     description: 'Hobby found (data is null if no hobby exists with that id)',
@@ -94,7 +94,8 @@ export class HobbiesController {
       'non-existent id still returns 200 with an affected count of 0 rather than a 404.',
   })
   @ApiWrappedOkResponse({
-    description: 'TypeORM update result (raw update outcome, not the updated Hobby entity)',
+    description:
+      'TypeORM update result (raw update outcome, not the updated Hobby entity)',
     example: { generatedMaps: [], raw: [], affected: 1 },
   })
   @ApiErrorResponse(
@@ -139,4 +140,3 @@ export class HobbiesController {
     return this.service.remove(id);
   }
 }
-

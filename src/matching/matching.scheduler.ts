@@ -25,7 +25,9 @@ export class MatchingScheduler {
   async processReadyUsers() {
     // Prevent concurrent execution
     if (this.isProcessing) {
-      this.logger.debug(`[SCHEDULER] ⏸️  Already processing, skipping this run`);
+      this.logger.debug(
+        `[SCHEDULER] ⏸️  Already processing, skipping this run`,
+      );
       return;
     }
 
@@ -37,8 +39,10 @@ export class MatchingScheduler {
         this.logger.debug(`[SCHEDULER] Queue is empty, no users waiting`);
         return;
       }
-      
-      this.logger.log(`[SCHEDULER] ⏳ Queue has ${queue.length} users, checking for ready users...`);
+
+      this.logger.log(
+        `[SCHEDULER] ⏳ Queue has ${queue.length} users, checking for ready users...`,
+      );
 
       const now = Date.now();
 
@@ -47,24 +51,28 @@ export class MatchingScheduler {
         const waitTime = now - u.score;
         return waitTime >= this.WAIT_TIME_MS;
       });
-      
+
       if (readyUsers.length < 2) {
         this.logger.debug(
           `[SCHEDULER] ⏳ Only ${readyUsers.length}/${queue.length} ready users, need 2+ to match`,
         );
-        
+
         // Show wait times for users not yet ready
-        const notReady = queue.filter(u => (now - u.score) < this.WAIT_TIME_MS);
+        const notReady = queue.filter((u) => now - u.score < this.WAIT_TIME_MS);
         if (notReady.length > 0) {
-          const waitTimes = notReady.map(u => {
-            const remaining = Math.ceil((this.WAIT_TIME_MS - (now - u.score)) / 1000);
-            return `${u.userId.substring(0, 8)}: ${remaining}s`;
-          }).join(', ');
+          const waitTimes = notReady
+            .map((u) => {
+              const remaining = Math.ceil(
+                (this.WAIT_TIME_MS - (now - u.score)) / 1000,
+              );
+              return `${u.userId.substring(0, 8)}: ${remaining}s`;
+            })
+            .join(', ');
           this.logger.debug(`[SCHEDULER] ⏱️  Wait times: ${waitTimes}`);
         }
         return;
       }
-      
+
       this.logger.log(
         `[SCHEDULER] ✅ Found ${readyUsers.length}/${queue.length} ready users, processing matches...`,
       );
@@ -82,20 +90,17 @@ export class MatchingScheduler {
 
         // Find best match among remaining ready users
         const remainingCandidates = readyUsers.filter(
-          (u) =>
-            u.userId !== user1.userId &&
-            !processedUsers.has(u.userId),
+          (u) => u.userId !== user1.userId && !processedUsers.has(u.userId),
         );
 
         if (remainingCandidates.length === 0) {
           break;
         }
 
-        const bestMatchResult =
-          await this.matchingService.findBestMatchForUser(
-            user1,
-            remainingCandidates,
-          );
+        const bestMatchResult = await this.matchingService.findBestMatchForUser(
+          user1,
+          remainingCandidates,
+        );
 
         if (bestMatchResult) {
           processedUsers.add(user1.userId);
@@ -128,14 +133,17 @@ export class MatchingScheduler {
   async expireChatRooms() {
     // Prevent concurrent execution
     if (this.isExpiringRooms) {
-      this.logger.debug(`[EXPIRATION] ⏸️  Already processing expiration, skipping this run`);
+      this.logger.debug(
+        `[EXPIRATION] ⏸️  Already processing expiration, skipping this run`,
+      );
       return;
     }
 
     this.isExpiringRooms = true;
     try {
       // Find all active rooms that have expired
-      const expiredRooms = await this.chatRoomRepository.findExpiredActiveRooms();
+      const expiredRooms =
+        await this.chatRoomRepository.findExpiredActiveRooms();
 
       if (expiredRooms.length === 0) {
         this.logger.debug(`[EXPIRATION] No expired rooms found`);
@@ -166,7 +174,10 @@ export class MatchingScheduler {
         `[EXPIRATION] ✅ Expired ${expiredCount}/${expiredRooms.length} room(s)`,
       );
     } catch (error) {
-      this.logger.error('[EXPIRATION] ❌ Error processing expired rooms:', error);
+      this.logger.error(
+        '[EXPIRATION] ❌ Error processing expired rooms:',
+        error,
+      );
     } finally {
       // Release lock
       this.isExpiringRooms = false;

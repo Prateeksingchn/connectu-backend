@@ -92,7 +92,11 @@ export class GendersController {
     'Authenticated user does not have the admin role',
     'Forbidden resource',
   )
-  @ApiErrorResponse(404, 'No gender exists with the given id', 'Gender not found')
+  @ApiErrorResponse(
+    404,
+    'No gender exists with the given id',
+    'Gender not found',
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Patch(':id')
@@ -115,7 +119,11 @@ export class GendersController {
     'Authenticated user does not have the admin role',
     'Forbidden resource',
   )
-  @ApiErrorResponse(404, 'No gender exists with the given id', 'Gender not found')
+  @ApiErrorResponse(
+    404,
+    'No gender exists with the given id',
+    'Gender not found',
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Delete(':id')
@@ -123,4 +131,3 @@ export class GendersController {
     return this.gendersService.remove(id);
   }
 }
-

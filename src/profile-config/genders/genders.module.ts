@@ -15,4 +15,3 @@ import { PassportModule } from '@nestjs/passport';
   exports: [GendersService],
 })
 export class GendersModule {}
-

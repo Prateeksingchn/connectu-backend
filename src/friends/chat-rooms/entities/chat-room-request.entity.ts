@@ -77,10 +77,10 @@ export class ChatRoomRequest {
   createdAt: Date;
 
   @ApiProperty({
-    description: 'Timestamp when the request was last updated (status change or reopen).',
+    description:
+      'Timestamp when the request was last updated (status change or reopen).',
     example: '2026-07-21T09:00:00.000Z',
   })
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

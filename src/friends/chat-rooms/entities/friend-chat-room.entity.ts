@@ -25,7 +25,8 @@ export class FriendChatRoom {
   id: string;
 
   @ApiProperty({
-    description: 'ID of the underlying accepted friendship this room was created from. One friendship can have at most one friend chat room.',
+    description:
+      'ID of the underlying accepted friendship this room was created from. One friendship can have at most one friend chat room.',
     example: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc',
     format: 'uuid',
   })
@@ -41,7 +42,8 @@ export class FriendChatRoom {
   friendship: Friendship;
 
   @ApiProperty({
-    description: 'ID of the first participant (the original chat room requester).',
+    description:
+      'ID of the first participant (the original chat room requester).',
     example: '11111111-1111-4111-8111-111111111111',
     format: 'uuid',
   })
@@ -73,7 +75,8 @@ export class FriendChatRoom {
   user2: User;
 
   @ApiProperty({
-    description: 'Whether the chat room is currently active. Set to false once either participant ends it; unlike matched chat rooms, there is no time-based expiration.',
+    description:
+      'Whether the chat room is currently active. Set to false once either participant ends it; unlike matched chat rooms, there is no time-based expiration.',
     example: true,
     default: true,
   })
@@ -81,7 +84,8 @@ export class FriendChatRoom {
   isActive: boolean;
 
   @ApiPropertyOptional({
-    description: 'Timestamp of the most recent message sent in this room, if any.',
+    description:
+      'Timestamp of the most recent message sent in this room, if any.',
     example: '2026-07-24T18:30:00.000Z',
     nullable: true,
   })
@@ -97,17 +101,18 @@ export class FriendChatRoom {
   lastMessageText: string;
 
   @ApiProperty({
-    description: 'Timestamp when the friend chat room was created (i.e. when the chat room request was accepted).',
+    description:
+      'Timestamp when the friend chat room was created (i.e. when the chat room request was accepted).',
     example: '2026-07-20T10:15:30.000Z',
   })
   @CreateDateColumn()
   createdAt: Date;
 
   @ApiProperty({
-    description: 'Timestamp when the room was last updated (e.g. new message, or deactivation).',
+    description:
+      'Timestamp when the room was last updated (e.g. new message, or deactivation).',
     example: '2026-07-24T18:30:00.000Z',
   })
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

@@ -1,6 +1,19 @@
-import { Controller, Post, Delete, UseGuards, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  UseGuards,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -136,7 +149,34 @@ export class MatchingController {
   )
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
   @Delete('end-chat-room/:id')
-  async endChatRoom(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+  async endChatRoom(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: any,
+  ) {
     return this.matchingService.endActiveChatRoom(id, user.id);
+  }
+
+  @ApiOperation({
+    summary: "Get the caller's currently active anonymous chat room, if any",
+    description:
+      'Lets a tab that does not know which room it is in (a fresh tab, or a hard refresh that wiped ' +
+      'in-memory frontend state) recover it from the backend instead of hitting a dead end. Uses the ' +
+      'same expiry-aware lookup as join-queue, so a room past its expiresAt is treated as gone (and ' +
+      'self-heals its isActive flag) rather than returned as active. Returns null when there is no ' +
+      'active room.',
+  })
+  @ApiWrappedOkResponse({
+    description: 'The active room, or null if the caller has none',
+    example: {
+      roomId: 'b3f1c9e0-6b1a-4b0a-9c3e-1a2b3c4d5e6f',
+      otherUserId: 'f6e5d4c3-b2a1-4d5e-9f8a-7b6c5d4e3f2a',
+      matchScore: 5,
+      expiresAt: '2026-07-26T18:40:00.000Z',
+    },
+  })
+  @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @Get('active-room')
+  async getActiveRoom(@CurrentUser() user: any) {
+    return this.matchingService.getActiveRoom(user.id);
   }
 }

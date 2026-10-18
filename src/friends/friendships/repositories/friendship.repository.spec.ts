@@ -28,7 +28,9 @@ describe('FriendshipRepository', () => {
       manager: {
         // Run the transaction callback synchronously against our mock manager,
         // the same way TypeORM's real EntityManager.transaction() would.
-        transaction: jest.fn((cb: (manager: any) => Promise<any>) => cb(manager)),
+        transaction: jest.fn((cb: (manager: any) => Promise<any>) =>
+          cb(manager),
+        ),
       },
     };
 

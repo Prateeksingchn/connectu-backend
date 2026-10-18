@@ -10,7 +10,10 @@ describe('RedisService', () => {
     configService = { get: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RedisService, { provide: ConfigService, useValue: configService }],
+      providers: [
+        RedisService,
+        { provide: ConfigService, useValue: configService },
+      ],
     }).compile();
 
     // Intentionally NOT calling module.init() / onModuleInit() here - this keeps

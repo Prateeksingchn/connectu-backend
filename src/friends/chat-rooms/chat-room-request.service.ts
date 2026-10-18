@@ -44,10 +44,7 @@ export class ChatRoomRequestService {
       friendId,
     );
 
-    if (
-      !friendship ||
-      friendship.status !== FriendshipStatus.ACCEPTED
-    ) {
+    if (!friendship || friendship.status !== FriendshipStatus.ACCEPTED) {
       throw new ForbiddenException(
         'You can only create chat room requests with accepted friends',
       );
@@ -85,11 +82,15 @@ export class ChatRoomRequestService {
       );
 
       // Notify the friend via WebSocket
-      this.wsGateway.emitToUser(friendId, WebSocketEvent.CHAT_ROOM_REQUEST_RECEIVED, {
-        requestId: reset.id,
-        requesterId: requesterId,
-        message: 'You have received a chat room request',
-      });
+      this.wsGateway.emitToUser(
+        friendId,
+        WebSocketEvent.CHAT_ROOM_REQUEST_RECEIVED,
+        {
+          requestId: reset.id,
+          requesterId: requesterId,
+          message: 'You have received a chat room request',
+        },
+      );
 
       return {
         message: 'Chat room request sent successfully',
@@ -109,11 +110,15 @@ export class ChatRoomRequestService {
     );
 
     // Notify the friend via WebSocket
-    this.wsGateway.emitToUser(friendId, WebSocketEvent.CHAT_ROOM_REQUEST_RECEIVED, {
-      requestId: request.id,
-      requesterId: requesterId,
-      message: 'You have received a chat room request',
-    });
+    this.wsGateway.emitToUser(
+      friendId,
+      WebSocketEvent.CHAT_ROOM_REQUEST_RECEIVED,
+      {
+        requestId: request.id,
+        requesterId: requesterId,
+        message: 'You have received a chat room request',
+      },
+    );
 
     return {
       message: 'Chat room request sent successfully',
@@ -196,15 +201,11 @@ export class ChatRoomRequestService {
         },
       );
 
-      this.wsGateway.emitToUser(
-        addresseeId,
-        WebSocketEvent.CHAT_ROOM_CREATED,
-        {
-          roomId: friendChatRoom.id,
-          friendId: request.requesterId,
-          message: 'Chat room created! You can now start chatting.',
-        },
-      );
+      this.wsGateway.emitToUser(addresseeId, WebSocketEvent.CHAT_ROOM_CREATED, {
+        roomId: friendChatRoom.id,
+        friendId: request.requesterId,
+        message: 'Chat room created! You can now start chatting.',
+      });
 
       return {
         message: 'Chat room request accepted and room created successfully',
@@ -245,4 +246,3 @@ export class ChatRoomRequestService {
     }));
   }
 }
-

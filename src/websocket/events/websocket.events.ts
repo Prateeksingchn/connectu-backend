@@ -12,7 +12,7 @@ export enum WebSocketEvent {
   LEAVE_MATCHING_QUEUE = 'matching:leave',
   MATCH_FOUND = 'matching:found',
   MATCH_FAILED = 'matching:failed',
-  
+
   // Chat events
   JOIN_ROOM = 'chat:join',
   LEAVE_ROOM = 'chat:leave',

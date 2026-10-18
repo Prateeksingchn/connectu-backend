@@ -60,10 +60,7 @@ export class FriendshipsService {
     userId1: string,
     userId2: string,
   ): Promise<boolean> {
-    return this.chatRoomRepository.participatedInSameChatRoom(
-      userId1,
-      userId2,
-    );
+    return this.chatRoomRepository.participatedInSameChatRoom(userId1, userId2);
   }
 
   /**
@@ -86,7 +83,10 @@ export class FriendshipsService {
     }
 
     // Rule 2: Check if there's an active chat room
-    const hasActiveChat = await this.hasActiveChatRoom(requesterId, addresseeId);
+    const hasActiveChat = await this.hasActiveChatRoom(
+      requesterId,
+      addresseeId,
+    );
     if (hasActiveChat) {
       throw new ForbiddenException(
         'Cannot send friend request while chat room is active',
@@ -106,10 +106,8 @@ export class FriendshipsService {
 
     // Rule 4: Atomically check-and-insert so concurrent A->B / B->A requests
     // can't both pass the existence check and create mirrored PENDING rows.
-    const { friendship, created } = await this.friendshipRepository.createIfAbsent(
-      requesterId,
-      addresseeId,
-    );
+    const { friendship, created } =
+      await this.friendshipRepository.createIfAbsent(requesterId, addresseeId);
 
     if (!created) {
       if (friendship.status === FriendshipStatus.ACCEPTED) {
@@ -232,4 +230,3 @@ export class FriendshipsService {
     }));
   }
 }
-

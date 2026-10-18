@@ -34,7 +34,10 @@ export class InterestsController {
     description:
       'Returns every interest option available for user profiles and matching. Public endpoint, no authentication required.',
   })
-  @ApiWrappedResponse(Interest, { description: 'List of interests', isArray: true })
+  @ApiWrappedResponse(Interest, {
+    description: 'List of interests',
+    isArray: true,
+  })
   @Get()
   findAll() {
     return this.service.findAll();
@@ -44,10 +47,11 @@ export class InterestsController {
     summary: 'Get an interest by id',
     description:
       'Looks up a single interest by its numeric id. Public endpoint. Note: the service does not throw ' +
-      "NotFoundException — if no interest matches, the response is still 200 with `data: null`.",
+      'NotFoundException — if no interest matches, the response is still 200 with `data: null`.',
   })
   @ApiWrappedResponse(Interest, {
-    description: 'Interest found (data is null if no interest exists with that id)',
+    description:
+      'Interest found (data is null if no interest exists with that id)',
   })
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -62,7 +66,10 @@ export class InterestsController {
       'column has a unique DB constraint, so inserting a duplicate name fails at the database level and ' +
       'surfaces as a generic 500 error rather than a 409.',
   })
-  @ApiWrappedResponse(Interest, { status: 201, description: 'Interest created' })
+  @ApiWrappedResponse(Interest, {
+    status: 201,
+    description: 'Interest created',
+  })
   @ApiErrorResponse(
     400,
     'Validation failed (e.g. name shorter than 2 characters)',
@@ -94,7 +101,8 @@ export class InterestsController {
       'non-existent id still returns 200 with an affected count of 0 rather than a 404.',
   })
   @ApiWrappedOkResponse({
-    description: 'TypeORM update result (raw update outcome, not the updated Interest entity)',
+    description:
+      'TypeORM update result (raw update outcome, not the updated Interest entity)',
     example: { generatedMaps: [], raw: [], affected: 1 },
   })
   @ApiErrorResponse(
@@ -111,7 +119,10 @@ export class InterestsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInterestDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInterestDto,
+  ) {
     return this.service.update(id, dto);
   }
 

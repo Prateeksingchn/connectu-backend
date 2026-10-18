@@ -23,9 +23,121 @@ import { User } from '../users/user.entity';
 
 const ROLES: RoleName[] = [RoleName.USER, RoleName.ADMIN];
 const GENDERS = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
-const HOBBIES = ['Reading', 'Gaming', 'Hiking', 'Cooking', 'Photography'];
-const INTERESTS = ['Music', 'Movies', 'Travel', 'Sports', 'Art'];
-const TECH_STACK = ['JavaScript', 'Python', 'React', 'Node.js', 'Go'];
+
+// Broad, varied pool so the registration multi-select actually has enough
+// breadth to feel personal. Grouped by theme below for readability only —
+// the table itself is a flat, unordered `name` list.
+const HOBBIES = [
+  // Active / outdoors
+  'Hiking',
+  'Running',
+  'Cycling',
+  'Swimming',
+  'Yoga',
+  'Rock Climbing',
+  'Camping',
+  'Fishing',
+  'Skateboarding',
+  'Bird Watching',
+  // Creative
+  'Photography',
+  'Painting',
+  'Drawing',
+  'Creative Writing',
+  'Playing Guitar',
+  'Singing',
+  'Dancing',
+  'Woodworking',
+  'Knitting',
+  // Food & home
+  'Cooking',
+  'Baking',
+  'Gardening',
+  // Games & mind
+  'Gaming',
+  'Chess',
+  'Board Games',
+  'Podcasting',
+  // Chill / social
+  'Reading',
+  'Traveling',
+  'Meditation',
+  'Volunteering',
+];
+
+const INTERESTS = [
+  // Culture & entertainment
+  'Music',
+  'Movies',
+  'Books & Literature',
+  'Comedy',
+  'Anime & Manga',
+  'Pop Culture',
+  'True Crime',
+  'Podcasts',
+  'Theatre & Performing Arts',
+  // Lifestyle
+  'Travel',
+  'Food & Dining',
+  'Fashion',
+  'Fitness & Wellness',
+  'Nature & Outdoors',
+  'Pets & Animals',
+  'Spirituality',
+  'Astrology',
+  // Sports & games
+  'Sports',
+  'Gaming & Esports',
+  'Cars & Motorsports',
+  // Mind & world
+  'Art',
+  'Science',
+  'Technology',
+  'History',
+  'Politics',
+  'Philosophy',
+  'Psychology',
+  'Entrepreneurship',
+  'Personal Finance',
+  'Sustainability',
+];
+
+const TECH_STACK = [
+  // Languages
+  'JavaScript',
+  'TypeScript',
+  'Python',
+  'Java',
+  'C++',
+  'C#',
+  'Go',
+  'Rust',
+  'Ruby',
+  'PHP',
+  'Swift',
+  'Kotlin',
+  // Frontend
+  'React',
+  'Next.js',
+  'Vue.js',
+  'Angular',
+  'Svelte',
+  // Backend
+  'Node.js',
+  'Express.js',
+  'NestJS',
+  'Django',
+  'Flask',
+  'Spring Boot',
+  // Data & infra
+  'PostgreSQL',
+  'MongoDB',
+  'MySQL',
+  'Redis',
+  'Docker',
+  'Kubernetes',
+  'AWS',
+];
 
 function report(label: string, total: number, created: number) {
   console.log(

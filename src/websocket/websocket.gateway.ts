@@ -17,6 +17,7 @@ import { WsJwtGuard } from './guards/ws-jwt.guard';
 import { ChatRoomRepository } from '../matching/repositories/chat-room.repository';
 import { FriendChatRoomRepository } from '../friends/chat-rooms/repositories/friend-chat-room.repository';
 import { ChatMessageService } from '../friends/chat-rooms/chat-message.service';
+import { FriendChatRoomService } from '../friends/chat-rooms/friend-chat-room.service';
 import { AnonymousIdentityService } from './services/anonymous-identity.service';
 import { UsersRepository } from '../users/users.repository';
 
@@ -45,6 +46,7 @@ export class WebSocketGateway
     private readonly chatRoomRepository: ChatRoomRepository,
     private readonly friendChatRoomRepository: FriendChatRoomRepository,
     private readonly chatMessageService: ChatMessageService,
+    private readonly friendChatRoomService: FriendChatRoomService,
     private readonly anonymousIdentityService: AnonymousIdentityService,
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
@@ -63,7 +65,9 @@ export class WebSocketGateway
       (client.handshake?.query?.token as string | undefined);
 
     if (!token) {
-      this.logger.error(`[WebSocket] ❌ Connection rejected: No token provided`);
+      this.logger.error(
+        `[WebSocket] ❌ Connection rejected: No token provided`,
+      );
       client.disconnect(true);
       return;
     }
@@ -87,7 +91,9 @@ export class WebSocketGateway
       return;
     }
 
-    this.logger.log(`[WebSocket] ✅ Client connected with valid token: ${client.id}`);
+    this.logger.log(
+      `[WebSocket] ✅ Client connected with valid token: ${client.id}`,
+    );
 
     // Send connection success event
     client.emit(WebSocketEvent.CONNECTION, {
@@ -143,7 +149,10 @@ export class WebSocketGateway
         const user = await this.usersRepository.findById(userId);
         displayName = user ? user.name : null;
       } else {
-        displayName = this.anonymousIdentityService.getAnonymousName(roomId, userId);
+        displayName = this.anonymousIdentityService.getAnonymousName(
+          roomId,
+          userId,
+        );
         // Remove anonymous identity for matching rooms
         if (displayName) {
           this.anonymousIdentityService.removeAnonymousName(roomId, userId);
@@ -204,7 +213,9 @@ export class WebSocketGateway
     const { roomId } = dto;
     const userId = (client as any).userId as string; // Set by WsJwtGuard from JWT
 
-    this.logger.log(`[JOIN_ROOM] User ${userId.substring(0, 8)} attempting to join ${roomId.substring(0, 8)}`);
+    this.logger.log(
+      `[JOIN_ROOM] User ${userId.substring(0, 8)} attempting to join ${roomId.substring(0, 8)}`,
+    );
 
     // Check if room is active and not expired (server-side)
     const chatRoom = await this.ensureRoomActive(roomId, client);
@@ -324,8 +335,16 @@ export class WebSocketGateway
 
       const { roomId, message } = dto;
 
-      if (!roomId || typeof roomId !== 'string' || !message || typeof message !== 'string') {
-        this.logger.warn('[SEND_MESSAGE] ❌ Invalid payload structure', { roomId, message });
+      if (
+        !roomId ||
+        typeof roomId !== 'string' ||
+        !message ||
+        typeof message !== 'string'
+      ) {
+        this.logger.warn('[SEND_MESSAGE] ❌ Invalid payload structure', {
+          roomId,
+          message,
+        });
         client.emit(WebSocketEvent.ERROR, {
           message: 'Invalid message payload',
         });
@@ -361,6 +380,7 @@ export class WebSocketGateway
       const isFriendRoom = await this.isFriendChatRoom(roomId);
       if (isFriendRoom) {
         await this.chatMessageService.saveMessage(roomId, userId, message);
+        await this.friendChatRoomService.updateLastMessage(roomId, message);
       }
 
       // Message payload - includes display name (real or anonymous)
@@ -379,7 +399,10 @@ export class WebSocketGateway
       this.server.to(roomId).emit(WebSocketEvent.NEW_MESSAGE, messageData);
     } catch (error) {
       // Never throw from WebSocket handler; always emit a socket error event
-      this.logger.error('[SEND_MESSAGE] ❌ Unexpected error while sending message', error as any);
+      this.logger.error(
+        '[SEND_MESSAGE] ❌ Unexpected error while sending message',
+        error,
+      );
       client.emit(WebSocketEvent.ERROR, {
         message: 'Failed to send message due to a server error',
       });
@@ -399,14 +422,16 @@ export class WebSocketGateway
     const userId = (client as any).userId as string;
 
     // Check if room is active and not expired
-    const chatRoom = await this.ensureRoomActive(roomId, client, { silent: true });
+    const chatRoom = await this.ensureRoomActive(roomId, client, {
+      silent: true,
+    });
     if (!chatRoom) {
       return;
     }
 
     // Get display name (real name for friend rooms, anonymous for matching rooms)
     const displayName = await this.getDisplayName(roomId, userId);
-    
+
     // Notify other users in room (not sender)
     client.to(roomId).emit(WebSocketEvent.TYPING, {
       anonymousName: displayName,
@@ -428,7 +453,9 @@ export class WebSocketGateway
     const userId = (client as any).userId as string;
 
     // Check if room is active and not expired
-    const chatRoom = await this.ensureRoomActive(roomId, client, { silent: true });
+    const chatRoom = await this.ensureRoomActive(roomId, client, {
+      silent: true,
+    });
     if (!chatRoom) {
       return;
     }
@@ -472,7 +499,7 @@ export class WebSocketGateway
   getRoomMembers(roomId: string): Set<string> | undefined {
     return this.roomMemberships.get(roomId);
   }
-  
+
   /**
    * Check if user is online
    */
@@ -521,7 +548,9 @@ export class WebSocketGateway
     // `server.sockets` is typed as a Namespace, but with `namespace: '/'` configured on this
     // gateway, Nest injects the namespace itself here - whose own `.sockets` is the
     // Map<SocketId, Socket> of connected sockets, not `server.sockets.sockets`.
-    const sockets = this.server?.sockets as unknown as Map<string, Socket> | undefined;
+    const sockets = this.server?.sockets as unknown as
+      | Map<string, Socket>
+      | undefined;
     const socket = sockets?.get(socketId);
     if (socket) {
       socket.disconnect(true);
@@ -541,7 +570,8 @@ export class WebSocketGateway
    * Check if a room is a friend chat room
    */
   private async isFriendChatRoom(roomId: string): Promise<boolean> {
-    const friendRoom = await this.friendChatRoomRepository.findValidActiveRoom(roomId);
+    const friendRoom =
+      await this.friendChatRoomRepository.findValidActiveRoom(roomId);
     return friendRoom !== null;
   }
 
@@ -554,16 +584,22 @@ export class WebSocketGateway
     userId: string,
   ): Promise<string> {
     const isFriendRoom = await this.isFriendChatRoom(roomId);
-    
+
     if (isFriendRoom) {
       // For friend rooms, use real name
       const user = await this.usersRepository.findById(userId);
       return user ? user.name : 'Unknown';
     } else {
       // For matching rooms, use anonymous name
-      let anonymousName = this.anonymousIdentityService.getAnonymousName(roomId, userId);
+      let anonymousName = this.anonymousIdentityService.getAnonymousName(
+        roomId,
+        userId,
+      );
       if (!anonymousName) {
-        anonymousName = this.anonymousIdentityService.assignAnonymousName(roomId, userId);
+        anonymousName = this.anonymousIdentityService.assignAnonymousName(
+          roomId,
+          userId,
+        );
       }
       return anonymousName;
     }
@@ -580,10 +616,10 @@ export class WebSocketGateway
     options?: { silent?: boolean },
   ): Promise<any> {
     const silent = options?.silent ?? false;
-    
+
     // First check matching chat rooms
     let room: any = await this.chatRoomRepository.findValidActiveRoom(roomId);
-    
+
     // If not found, check friend chat rooms
     if (!room) {
       room = await this.friendChatRoomRepository.findValidActiveRoom(roomId);
@@ -591,7 +627,9 @@ export class WebSocketGateway
 
     if (!room) {
       if (!silent) {
-        this.logger.warn(`[ROOM_CHECK] ❌ Room ${roomId.substring(0, 8)} not found or expired`);
+        this.logger.warn(
+          `[ROOM_CHECK] ❌ Room ${roomId.substring(0, 8)} not found or expired`,
+        );
         client.emit(WebSocketEvent.ERROR, {
           message: 'Chat room has expired or does not exist',
           roomId,
@@ -603,5 +641,3 @@ export class WebSocketGateway
     return room;
   }
 }
-
-

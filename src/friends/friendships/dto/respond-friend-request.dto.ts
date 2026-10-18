@@ -20,4 +20,3 @@ export class RespondFriendRequestDto {
   @IsEnum(FriendshipStatus)
   status: FriendshipStatus.ACCEPTED | FriendshipStatus.REJECTED;
 }
-

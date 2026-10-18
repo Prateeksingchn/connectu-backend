@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
@@ -36,13 +41,16 @@ export class WsJwtGuard implements CanActivate {
       (client as any).email = payload.email;
       (client as any).role = payload.role;
 
-      this.logger.log(`[WsJwtGuard] ✅ Token verified for user: ${payload.sub}`);
+      this.logger.log(
+        `[WsJwtGuard] ✅ Token verified for user: ${payload.sub}`,
+      );
 
       return true;
     } catch (error) {
-      this.logger.error(`[WsJwtGuard] ❌ JWT verification failed: ${error.message}`);
+      this.logger.error(
+        `[WsJwtGuard] ❌ JWT verification failed: ${error.message}`,
+      );
       throw new WsException('Invalid token');
     }
   }
 }
-

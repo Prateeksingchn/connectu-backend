@@ -11,4 +11,3 @@ export class CreateGenderDto {
   @MinLength(2)
   name: string;
 }
-

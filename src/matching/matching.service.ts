@@ -1,8 +1,10 @@
 import {
+  Inject,
   Injectable,
   Logger,
   BadRequestException,
   ConflictException,
+  forwardRef,
 } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { UsersRepository } from '../users/users.repository';
@@ -22,9 +24,10 @@ export class MatchingService {
     private readonly usersRepository: UsersRepository,
     private readonly chatRoomRepository: ChatRoomRepository,
     private readonly algorithmService: AlgorithmService,
+    @Inject(forwardRef(() => WebSocketGateway))
     private readonly wsGateway: WebSocketGateway,
     private readonly anonymousIdentityService: AnonymousIdentityService,
-  ) { }
+  ) {}
 
   /**
    * Add user to matching queue and wait for scheduler to find match
@@ -59,7 +62,7 @@ export class MatchingService {
       hobbies: user.hobbies?.map((h) => h.id) || [],
       techStack: user.techStack?.map((t) => t.id) || [],
     };
-    
+
     // 5. Add to Redis queue
     await this.redisService.addToMatchingQueue(userId, profileData);
 
@@ -203,7 +206,11 @@ export class MatchingService {
     );
 
     // Create match
-    const match = await this.createMatch(user, matchedCandidate, bestMatch.score);
+    const match = await this.createMatch(
+      user,
+      matchedCandidate,
+      bestMatch.score,
+    );
 
     return {
       score: bestMatch.score,
@@ -261,17 +268,25 @@ export class MatchingService {
       expiresAt: chatRoom.expiresAt,
     };
 
-    const user1Sent = this.wsGateway.emitToUser(user1.userId, WebSocketEvent.MATCH_FOUND, {
-      ...matchData,
-      otherUserId: user2.userId,
-      message: 'Match found! Joining chat room...',
-    });
+    const user1Sent = this.wsGateway.emitToUser(
+      user1.userId,
+      WebSocketEvent.MATCH_FOUND,
+      {
+        ...matchData,
+        otherUserId: user2.userId,
+        message: 'Match found! Joining chat room...',
+      },
+    );
 
-    const user2Sent = this.wsGateway.emitToUser(user2.userId, WebSocketEvent.MATCH_FOUND, {
-      ...matchData,
-      otherUserId: user1.userId,
-      message: 'Match found! Joining chat room...',
-    });
+    const user2Sent = this.wsGateway.emitToUser(
+      user2.userId,
+      WebSocketEvent.MATCH_FOUND,
+      {
+        ...matchData,
+        otherUserId: user1.userId,
+        message: 'Match found! Joining chat room...',
+      },
+    );
 
     this.logger.log(
       `Match notifications sent: User1 (${user1.userId.substring(0, 8)}) ${user1Sent ? '✅' : '❌'}, User2 (${user2.userId.substring(0, 8)}) ${user2Sent ? '✅' : '❌'}`,
@@ -287,18 +302,24 @@ export class MatchingService {
    * Remove user from queue (if they cancel)
    */
   async leaveQueue(userId: string) {
-    this.logger.log(`[LEAVE_QUEUE] User ${userId.substring(0, 8)} attempting to leave queue`);
+    this.logger.log(
+      `[LEAVE_QUEUE] User ${userId.substring(0, 8)} attempting to leave queue`,
+    );
 
     const inQueue = await this.redisService.isInMatchingQueue(userId);
 
     if (!inQueue) {
-      this.logger.warn(`[LEAVE_QUEUE] ⚠️ User ${userId.substring(0, 8)} not in queue`);
+      this.logger.warn(
+        `[LEAVE_QUEUE] ⚠️ User ${userId.substring(0, 8)} not in queue`,
+      );
       throw new BadRequestException('You are not in the matching queue');
     }
 
     await this.redisService.removeFromMatchingQueue([userId]);
 
-    this.logger.log(`[LEAVE_QUEUE] ✅ User ${userId.substring(0, 8)} left matching queue`);
+    this.logger.log(
+      `[LEAVE_QUEUE] ✅ User ${userId.substring(0, 8)} left matching queue`,
+    );
 
     return { message: 'Left matching queue successfully' };
   }
@@ -308,7 +329,7 @@ export class MatchingService {
    */
   async clearAllUsersFromQueue() {
     this.logger.warn(`[ADMIN] Clearing all users from matching queue`);
-    
+
     const queue = await this.redisService.getMatchingQueue();
     const userCount = queue.length;
 
@@ -325,14 +346,16 @@ export class MatchingService {
   async endActiveChatRoom(id: string, userId: string) {
     // Get chat room to verify user is a participant
     const chatRoom = await this.chatRoomRepository.findById(id);
-    
+
     if (!chatRoom) {
       throw new BadRequestException('Chat room not found');
     }
 
     // Verify user is part of this chat room
     if (chatRoom.user1Id !== userId && chatRoom.user2Id !== userId) {
-      throw new BadRequestException('You are not authorized to end this chat room');
+      throw new BadRequestException(
+        'You are not authorized to end this chat room',
+      );
     }
 
     // End the chat room
@@ -359,22 +382,26 @@ export class MatchingService {
   async expireChatRoom(roomId: string): Promise<boolean> {
     // Check if room is already expired (idempotent check)
     const chatRoom = await this.chatRoomRepository.findById(roomId);
-    
+
     if (!chatRoom) {
       this.logger.warn(`[EXPIRE] Room ${roomId.substring(0, 8)} not found`);
       return false;
     }
 
     if (!chatRoom.isActive) {
-      this.logger.debug(`[EXPIRE] Room ${roomId.substring(0, 8)} already expired`);
+      this.logger.debug(
+        `[EXPIRE] Room ${roomId.substring(0, 8)} already expired`,
+      );
       return false;
     }
 
     // Mark as inactive in database (idempotent - only updates if isActive=true)
     const wasUpdated = await this.chatRoomRepository.expireRoom(roomId);
-    
+
     if (!wasUpdated) {
-      this.logger.debug(`[EXPIRE] Room ${roomId.substring(0, 8)} already expired (race condition)`);
+      this.logger.debug(
+        `[EXPIRE] Room ${roomId.substring(0, 8)} already expired (race condition)`,
+      );
       return false;
     }
 
@@ -403,7 +430,9 @@ export class MatchingService {
       // Map<SocketId, Socket> of connected sockets - not `server.sockets.sockets`.
       const server = this.wsGateway.getServer();
       for (const socketId of socketIds) {
-        const socket = (server.sockets as unknown as Map<string, any>).get(socketId);
+        const socket = (server.sockets as unknown as Map<string, any>).get(
+          socketId,
+        );
         if (socket) {
           socket.leave(roomId);
         }
@@ -436,9 +465,39 @@ export class MatchingService {
       timestamp: new Date(),
     });
 
-    this.logger.log(`[EXPIRE] ✅ Room ${roomId.substring(0, 8)} expired and cleaned up`);
+    this.logger.log(
+      `[EXPIRE] ✅ Room ${roomId.substring(0, 8)} expired and cleaned up`,
+    );
 
     return true;
+  }
+
+  /**
+   * Return the caller's currently active anonymous chat room, if any - lets a
+   * tab that doesn't know which room it's in (fresh tab, or a hard refresh
+   * that wiped in-memory frontend state) recover it from the backend.
+   * Reuses findActiveByUserId(), which is already expiry-aware/self-healing.
+   */
+  async getActiveRoom(userId: string): Promise<{
+    roomId: string;
+    otherUserId: string;
+    matchScore: number | null;
+    expiresAt: Date | null;
+  } | null> {
+    const room = await this.chatRoomRepository.findActiveByUserId(userId);
+
+    if (!room) {
+      return null;
+    }
+
+    const otherUserId = room.user1Id === userId ? room.user2Id : room.user1Id;
+
+    return {
+      roomId: room.id,
+      otherUserId,
+      matchScore: room.matchScore ?? null,
+      expiresAt: room.expiresAt ?? null,
+    };
   }
 
   /**
@@ -446,7 +505,7 @@ export class MatchingService {
    */
   async isRoomActive(roomId: string): Promise<boolean> {
     const chatRoom = await this.chatRoomRepository.findById(roomId);
-    
+
     if (!chatRoom) {
       return false;
     }
@@ -466,4 +525,3 @@ export class MatchingService {
     return true;
   }
 }
-

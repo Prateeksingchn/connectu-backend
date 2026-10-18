@@ -36,15 +36,26 @@ export class FriendshipsController {
   @ApiWrappedOkResponse({
     status: 201,
     description: 'Friend request created as PENDING',
-    example: { message: 'Friend request sent successfully', friendshipId: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc' },
+    example: {
+      message: 'Friend request sent successfully',
+      friendshipId: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc',
+    },
   })
-  @ApiErrorResponse(400, 'Attempted to send a friend request to yourself', 'Cannot send friend request to yourself')
+  @ApiErrorResponse(
+    400,
+    'Attempted to send a friend request to yourself',
+    'Cannot send friend request to yourself',
+  )
   @ApiErrorResponse(
     403,
     'The chat room between these users is still active, or they have never chatted together',
     'Can only send friend requests to users you have chatted with',
   )
-  @ApiErrorResponse(409, 'A friendship record already exists between these users (pending, accepted, or rejected)', 'Users are already friends')
+  @ApiErrorResponse(
+    409,
+    'A friendship record already exists between these users (pending, accepted, or rejected)',
+    'Users are already friends',
+  )
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
   @Post('request')
   async sendFriendRequest(
@@ -64,8 +75,16 @@ export class FriendshipsController {
     description: 'Friend request status updated',
     example: { message: 'Friend request accepted successfully' },
   })
-  @ApiErrorResponse(400, 'Friendship record not found, or it is not currently PENDING', 'Friend request not found')
-  @ApiErrorResponse(403, 'The current user is not the addressee of this friend request', 'Only the recipient can respond to friend requests')
+  @ApiErrorResponse(
+    400,
+    'Friendship record not found, or it is not currently PENDING',
+    'Friend request not found',
+  )
+  @ApiErrorResponse(
+    403,
+    'The current user is not the addressee of this friend request',
+    'Only the recipient can respond to friend requests',
+  )
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
   @Patch('respond')
   async respondToFriendRequest(
@@ -77,14 +96,19 @@ export class FriendshipsController {
 
   @ApiOperation({
     summary: 'List my accepted friends',
-    description: 'Returns every user the current user has an ACCEPTED friendship with, along with the friendship ID and when it was created.',
+    description:
+      'Returns every user the current user has an ACCEPTED friendship with, along with the friendship ID and when it was created.',
   })
   @ApiWrappedOkResponse({
     description: 'List of accepted friends',
     example: [
       {
         friendshipId: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc',
-        friend: { id: '22222222-2222-4222-8222-222222222222', name: 'Jane Doe', email: 'jane@example.com' },
+        friend: {
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Jane Doe',
+          email: 'jane@example.com',
+        },
         createdAt: '2026-07-20T10:15:30.000Z',
       },
     ],
@@ -97,14 +121,19 @@ export class FriendshipsController {
 
   @ApiOperation({
     summary: 'List my pending incoming friend requests',
-    description: 'Returns every PENDING friend request addressed to the current user (i.e. requests awaiting this user\'s response), with requester details.',
+    description:
+      "Returns every PENDING friend request addressed to the current user (i.e. requests awaiting this user's response), with requester details.",
   })
   @ApiWrappedOkResponse({
     description: 'List of pending incoming friend requests',
     example: [
       {
         friendshipId: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc',
-        requester: { id: '11111111-1111-4111-8111-111111111111', name: 'John Smith', email: 'john@example.com' },
+        requester: {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'John Smith',
+          email: 'john@example.com',
+        },
         createdAt: '2026-07-20T10:15:30.000Z',
       },
     ],
@@ -115,4 +144,3 @@ export class FriendshipsController {
     return this.friendshipsService.getPendingRequests(user.id);
   }
 }
-

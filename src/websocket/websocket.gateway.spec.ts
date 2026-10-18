@@ -5,6 +5,7 @@ import { WebSocketEvent } from './events/websocket.events';
 import { ChatRoomRepository } from '../matching/repositories/chat-room.repository';
 import { FriendChatRoomRepository } from '../friends/chat-rooms/repositories/friend-chat-room.repository';
 import { ChatMessageService } from '../friends/chat-rooms/chat-message.service';
+import { FriendChatRoomService } from '../friends/chat-rooms/friend-chat-room.service';
 import { AnonymousIdentityService } from './services/anonymous-identity.service';
 import { UsersRepository } from '../users/users.repository';
 
@@ -33,6 +34,7 @@ describe('WebSocketGateway', () => {
   let chatRoomRepository: { findValidActiveRoom: jest.Mock };
   let friendChatRoomRepository: { findValidActiveRoom: jest.Mock };
   let chatMessageService: { saveMessage: jest.Mock };
+  let friendChatRoomService: { updateLastMessage: jest.Mock };
   let anonymousIdentityService: {
     getAnonymousName: jest.Mock;
     assignAnonymousName: jest.Mock;
@@ -47,6 +49,7 @@ describe('WebSocketGateway', () => {
     chatRoomRepository = { findValidActiveRoom: jest.fn() };
     friendChatRoomRepository = { findValidActiveRoom: jest.fn() };
     chatMessageService = { saveMessage: jest.fn() };
+    friendChatRoomService = { updateLastMessage: jest.fn() };
     anonymousIdentityService = {
       getAnonymousName: jest.fn(),
       assignAnonymousName: jest.fn(),
@@ -60,9 +63,16 @@ describe('WebSocketGateway', () => {
       providers: [
         WebSocketGateway,
         { provide: ChatRoomRepository, useValue: chatRoomRepository },
-        { provide: FriendChatRoomRepository, useValue: friendChatRoomRepository },
+        {
+          provide: FriendChatRoomRepository,
+          useValue: friendChatRoomRepository,
+        },
         { provide: ChatMessageService, useValue: chatMessageService },
-        { provide: AnonymousIdentityService, useValue: anonymousIdentityService },
+        { provide: FriendChatRoomService, useValue: friendChatRoomService },
+        {
+          provide: AnonymousIdentityService,
+          useValue: anonymousIdentityService,
+        },
         { provide: UsersRepository, useValue: usersRepository },
         { provide: JwtService, useValue: jwtService },
       ],
@@ -99,7 +109,7 @@ describe('WebSocketGateway', () => {
       await gateway.handleConnection(client);
 
       expect(client.disconnect).toHaveBeenCalledWith(true);
-      expect((client as any).userId).toBeUndefined();
+      expect(client.userId).toBeUndefined();
       expect(client.emit).not.toHaveBeenCalledWith(
         WebSocketEvent.CONNECTION,
         expect.anything(),
@@ -118,9 +128,9 @@ describe('WebSocketGateway', () => {
       await gateway.handleConnection(client);
 
       expect(client.disconnect).not.toHaveBeenCalled();
-      expect((client as any).userId).toBe('user-123');
-      expect((client as any).email).toBe('user@example.com');
-      expect((client as any).role).toBe('USER');
+      expect(client.userId).toBe('user-123');
+      expect(client.email).toBe('user@example.com');
+      expect(client.role).toBe('USER');
       expect(client.emit).toHaveBeenCalledWith(
         WebSocketEvent.CONNECTION,
         expect.objectContaining({ socketId: client.id }),
@@ -145,7 +155,7 @@ describe('WebSocketGateway', () => {
   describe('handleUserOnline', () => {
     it('registers the connection under the verified client.userId, ignoring anything else', () => {
       const client = createMockSocket('socket-42');
-      (client as any).userId = 'verified-user-id';
+      client.userId = 'verified-user-id';
 
       gateway.handleUserOnline(client);
 
@@ -175,23 +185,25 @@ describe('WebSocketGateway', () => {
 
     it('removes the user from tracking and emits USER_OFFLINE', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
 
       await gateway.handleDisconnect(client);
 
       expect(gateway.isUserOnline('user-1')).toBe(false);
-      expect(server.emit).toHaveBeenCalledWith(
-        WebSocketEvent.USER_OFFLINE,
-        { userId: 'user-1' },
-      );
+      expect(server.emit).toHaveBeenCalledWith(WebSocketEvent.USER_OFFLINE, {
+        userId: 'user-1',
+      });
     });
 
     it('removes the user from a matching room, clears their anonymous identity, and notifies remaining members', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
-      (gateway as any).roomMemberships.set('room-1', new Set(['user-1', 'user-2']));
+      (gateway as any).roomMemberships.set(
+        'room-1',
+        new Set(['user-1', 'user-2']),
+      );
 
       friendChatRoomRepository.findValidActiveRoom.mockResolvedValue(null); // not a friend room
       anonymousIdentityService.getAnonymousName.mockReturnValue('WittyFox');
@@ -205,16 +217,21 @@ describe('WebSocketGateway', () => {
       expect(server.to).toHaveBeenCalledWith('room-1');
       expect(server.to('room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_LEFT,
-        expect.objectContaining({ anonymousName: 'WittyFox', roomId: 'room-1' }),
+        expect.objectContaining({
+          anonymousName: 'WittyFox',
+          roomId: 'room-1',
+        }),
       );
       // one member remains, so the room and its identities are not fully cleared
       expect(gateway.getRoomMembers('room-1')).toEqual(new Set(['user-2']));
-      expect(anonymousIdentityService.clearRoomIdentities).not.toHaveBeenCalled();
+      expect(
+        anonymousIdentityService.clearRoomIdentities,
+      ).not.toHaveBeenCalled();
     });
 
     it('clears the whole room once the last member disconnects from a matching room', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
       (gateway as any).roomMemberships.set('room-1', new Set(['user-1']));
 
@@ -224,21 +241,33 @@ describe('WebSocketGateway', () => {
       await gateway.handleDisconnect(client);
 
       expect(gateway.getRoomMembers('room-1')).toBeUndefined();
-      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith('room-1');
+      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
+        'room-1',
+      );
     });
 
     it('uses the real display name and skips anonymous-identity cleanup for a friend room', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
-      (gateway as any).roomMemberships.set('friend-room-1', new Set(['user-1', 'user-2']));
+      (gateway as any).roomMemberships.set(
+        'friend-room-1',
+        new Set(['user-1', 'user-2']),
+      );
 
-      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'friend-room-1' });
-      usersRepository.findById.mockResolvedValue({ id: 'user-1', name: 'Alice' });
+      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue({
+        id: 'friend-room-1',
+      });
+      usersRepository.findById.mockResolvedValue({
+        id: 'user-1',
+        name: 'Alice',
+      });
 
       await gateway.handleDisconnect(client);
 
-      expect(anonymousIdentityService.removeAnonymousName).not.toHaveBeenCalled();
+      expect(
+        anonymousIdentityService.removeAnonymousName,
+      ).not.toHaveBeenCalled();
       expect(server.to('friend-room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_LEFT,
         expect.objectContaining({ anonymousName: 'Alice' }),
@@ -254,7 +283,7 @@ describe('WebSocketGateway', () => {
 
     it('force-disconnects the live socket when one is found on the server', () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
       server.sockets.set('socket-1', client);
 
@@ -265,7 +294,7 @@ describe('WebSocketGateway', () => {
 
     it('replicates handleDisconnect() cleanup when tracking is stale and no live socket exists', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
       (gateway as any).roomMemberships.set('room-1', new Set(['user-1']));
       // server.sockets has no entry for 'socket-1' -> simulates an already-gone socket
@@ -280,7 +309,9 @@ describe('WebSocketGateway', () => {
 
       expect(gateway.isUserOnline('user-1')).toBe(false);
       expect(gateway.getRoomMembers('room-1')).toBeUndefined();
-      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith('room-1');
+      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
+        'room-1',
+      );
       expect(server.to('room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_LEFT,
         expect.objectContaining({ anonymousName: 'WittyFox' }),
@@ -289,7 +320,7 @@ describe('WebSocketGateway', () => {
 
     it('logs rather than throws if the fallback cleanup fails', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
       (gateway as any).roomMemberships.set('room-1', new Set(['user-1']));
 
@@ -307,7 +338,7 @@ describe('WebSocketGateway', () => {
   describe('handleJoinRoom', () => {
     it('does not join or track membership when the room is not active/valid', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       chatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
       friendChatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
 
@@ -323,11 +354,15 @@ describe('WebSocketGateway', () => {
 
     it('joins the room, tracks membership, and notifies both the joiner and other members', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
-      chatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'room-1' });
+      client.userId = 'user-1';
+      chatRoomRepository.findValidActiveRoom.mockResolvedValue({
+        id: 'room-1',
+      });
       friendChatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
       anonymousIdentityService.getAnonymousName.mockReturnValue(null);
-      anonymousIdentityService.assignAnonymousName.mockReturnValue('BraveOtter');
+      anonymousIdentityService.assignAnonymousName.mockReturnValue(
+        'BraveOtter',
+      );
 
       await gateway.handleJoinRoom(client, { roomId: 'room-1' });
 
@@ -348,14 +383,20 @@ describe('WebSocketGateway', () => {
   describe('handleSendMessage', () => {
     it('does NOT persist a message sent in an anonymous matching chat room', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
-      chatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'room-1' });
+      client.userId = 'user-1';
+      chatRoomRepository.findValidActiveRoom.mockResolvedValue({
+        id: 'room-1',
+      });
       friendChatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
       anonymousIdentityService.getAnonymousName.mockReturnValue('WittyFox');
 
-      await gateway.handleSendMessage(client, { roomId: 'room-1', message: 'hello' });
+      await gateway.handleSendMessage(client, {
+        roomId: 'room-1',
+        message: 'hello',
+      });
 
       expect(chatMessageService.saveMessage).not.toHaveBeenCalled();
+      expect(friendChatRoomService.updateLastMessage).not.toHaveBeenCalled();
       expect(server.to).toHaveBeenCalledWith('room-1');
       expect(server.to('room-1').emit).toHaveBeenCalledWith(
         expect.anything(),
@@ -365,10 +406,15 @@ describe('WebSocketGateway', () => {
 
     it('DOES persist a message sent in a friend chat room', async () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       chatRoomRepository.findValidActiveRoom.mockResolvedValue(null);
-      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue({ id: 'friend-room-1' });
-      usersRepository.findById.mockResolvedValue({ id: 'user-1', name: 'Alice' });
+      friendChatRoomRepository.findValidActiveRoom.mockResolvedValue({
+        id: 'friend-room-1',
+      });
+      usersRepository.findById.mockResolvedValue({
+        id: 'user-1',
+        name: 'Alice',
+      });
 
       await gateway.handleSendMessage(client, {
         roomId: 'friend-room-1',
@@ -378,6 +424,10 @@ describe('WebSocketGateway', () => {
       expect(chatMessageService.saveMessage).toHaveBeenCalledWith(
         'friend-room-1',
         'user-1',
+        'hello friend',
+      );
+      expect(friendChatRoomService.updateLastMessage).toHaveBeenCalledWith(
+        'friend-room-1',
         'hello friend',
       );
       expect(server.to).toHaveBeenCalledWith('friend-room-1');
@@ -391,10 +441,12 @@ describe('WebSocketGateway', () => {
   describe('emitToUser', () => {
     it('emits to the socket and returns true when the user is online', () => {
       const client = createMockSocket('socket-1');
-      (client as any).userId = 'user-1';
+      client.userId = 'user-1';
       gateway.handleUserOnline(client);
 
-      const sent = gateway.emitToUser('user-1', WebSocketEvent.MATCH_FOUND, { roomId: 'x' });
+      const sent = gateway.emitToUser('user-1', WebSocketEvent.MATCH_FOUND, {
+        roomId: 'x',
+      });
 
       expect(sent).toBe(true);
       expect(server.to).toHaveBeenCalledWith('socket-1');
@@ -405,7 +457,11 @@ describe('WebSocketGateway', () => {
     });
 
     it('returns false without emitting when the user is offline', () => {
-      const sent = gateway.emitToUser('offline-user', WebSocketEvent.MATCH_FOUND, {});
+      const sent = gateway.emitToUser(
+        'offline-user',
+        WebSocketEvent.MATCH_FOUND,
+        {},
+      );
 
       expect(sent).toBe(false);
     });

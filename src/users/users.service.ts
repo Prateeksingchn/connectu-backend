@@ -42,10 +42,7 @@ export class UsersService {
    * - No profile access outside chat
    * - Full profile revealed ONLY after friend request is accepted
    */
-  async findProfile(
-    viewerId: string,
-    targetUserId: string,
-  ): Promise<User> {
+  async findProfile(viewerId: string, targetUserId: string): Promise<User> {
     // Users can always view their own profile
     if (viewerId === targetUserId) {
       return this.findOne(targetUserId);
@@ -57,10 +54,7 @@ export class UsersService {
       targetUserId,
     );
 
-    if (
-      !friendship ||
-      friendship.status !== FriendshipStatus.ACCEPTED
-    ) {
+    if (!friendship || friendship.status !== FriendshipStatus.ACCEPTED) {
       throw new ForbiddenException(
         'Profile access is only available to accepted friends',
       );

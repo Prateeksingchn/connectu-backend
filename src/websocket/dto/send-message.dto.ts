@@ -8,4 +8,3 @@ export class SendMessageDto {
   @MinLength(1)
   message: string;
 }
-

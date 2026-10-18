@@ -4,4 +4,3 @@ export class JoinRoomDto {
   @IsUUID()
   roomId: string;
 }
-

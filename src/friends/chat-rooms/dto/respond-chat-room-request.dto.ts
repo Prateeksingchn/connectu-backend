@@ -21,4 +21,3 @@ export class RespondChatRoomRequestDto {
   @IsEnum(ChatRoomRequestStatus)
   status: ChatRoomRequestStatus;
 }
-

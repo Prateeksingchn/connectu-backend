@@ -19,7 +19,10 @@ describe('FriendChatRoomService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FriendChatRoomService,
-        { provide: FriendChatRoomRepository, useValue: friendChatRoomRepository },
+        {
+          provide: FriendChatRoomRepository,
+          useValue: friendChatRoomRepository,
+        },
         { provide: MatchingService, useValue: {} },
       ],
     }).compile();
@@ -63,8 +66,12 @@ describe('FriendChatRoomService', () => {
 
       const result = await service.endFriendChatRoom('room-1', 'user-a');
 
-      expect(friendChatRoomRepository.markInactive).toHaveBeenCalledWith('room-1');
-      expect(result).toEqual({ message: 'Friend chat room ended successfully' });
+      expect(friendChatRoomRepository.markInactive).toHaveBeenCalledWith(
+        'room-1',
+      );
+      expect(result).toEqual({
+        message: 'Friend chat room ended successfully',
+      });
     });
 
     it('allows the room to be ended by user2 as well', async () => {
@@ -76,8 +83,12 @@ describe('FriendChatRoomService', () => {
 
       const result = await service.endFriendChatRoom('room-1', 'user-b');
 
-      expect(friendChatRoomRepository.markInactive).toHaveBeenCalledWith('room-1');
-      expect(result).toEqual({ message: 'Friend chat room ended successfully' });
+      expect(friendChatRoomRepository.markInactive).toHaveBeenCalledWith(
+        'room-1',
+      );
+      expect(result).toEqual({
+        message: 'Friend chat room ended successfully',
+      });
     });
   });
 

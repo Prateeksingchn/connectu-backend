@@ -30,9 +30,9 @@ export class AuthService {
     private readonly hobbiesService: HobbiesService,
     private readonly techStackService: TechStackService,
     private readonly jwtService: JwtService,
-  ) { }
-  
-  async register(        dto: RegisterDto) {
+  ) {}
+
+  async register(dto: RegisterDto) {
     const exists = await this.usersRepository.findByEmail(dto.email);
     if (exists) {
       throw new ConflictException('Email already registered');
@@ -40,9 +40,17 @@ export class AuthService {
 
     const [gender, interests, hobbies, techStacks] = await Promise.all([
       this.validateGender(dto.genderId),
-      this.validateEntities<Interest>(dto.interests, this.interestsService, 'interest'),
+      this.validateEntities<Interest>(
+        dto.interests,
+        this.interestsService,
+        'interest',
+      ),
       this.validateEntities<Hobby>(dto.hobbies, this.hobbiesService, 'hobby'),
-      this.validateEntities<TechStack>(dto.techStack, this.techStackService, 'tech stack'),
+      this.validateEntities<TechStack>(
+        dto.techStack,
+        this.techStackService,
+        'tech stack',
+      ),
     ]);
 
     const role = dto.role || RoleName.USER;
@@ -51,7 +59,7 @@ export class AuthService {
     const user = new User();
     user.email = dto.email;
     user.name = dto.name;
-    user.password = dto.password; 
+    user.password = dto.password;
     user.role = role;
     user.gender = gender;
     user.interests = interests;
@@ -83,7 +91,12 @@ export class AuthService {
     const token = await this.signToken(user.id, user.email, user.role);
     return {
       access_token: token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
     };
   }
 

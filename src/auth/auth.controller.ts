@@ -11,7 +11,10 @@ import {
   MeResponseDto,
   RegisterResponseDto,
 } from './dto/auth-response.dto';
-import { ApiErrorResponse, ApiWrappedResponse } from '../common/decorators/api-response.decorator';
+import {
+  ApiErrorResponse,
+  ApiWrappedResponse,
+} from '../common/decorators/api-response.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -28,9 +31,11 @@ export class AuthController {
     status: 201,
     description: 'Account created',
   })
-  @ApiErrorResponse(400, 'Invalid genderId, interest/hobby/tech-stack id, or DTO validation failure', [
-    'Invalid gender ID',
-  ])
+  @ApiErrorResponse(
+    400,
+    'Invalid genderId, interest/hobby/tech-stack id, or DTO validation failure',
+    ['Invalid gender ID'],
+  )
   @ApiErrorResponse(409, 'Email already registered', 'Email already registered')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
@@ -40,10 +45,17 @@ export class AuthController {
 
   @ApiOperation({
     summary: 'Log in with email and password',
-    description: 'Verifies credentials with bcrypt and returns a signed JWT access token.',
+    description:
+      'Verifies credentials with bcrypt and returns a signed JWT access token.',
   })
-  @ApiWrappedResponse(LoginResponseDto, { description: 'Authenticated successfully' })
-  @ApiErrorResponse(401, 'Email not found or password does not match', 'Invalid credentials')
+  @ApiWrappedResponse(LoginResponseDto, {
+    description: 'Authenticated successfully',
+  })
+  @ApiErrorResponse(
+    401,
+    'Email not found or password does not match',
+    'Invalid credentials',
+  )
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
@@ -52,7 +64,8 @@ export class AuthController {
 
   @ApiOperation({
     summary: 'Get the current authenticated user',
-    description: 'Returns the identity encoded in the JWT (id, email, role) after JwtAuthGuard validates the token.',
+    description:
+      'Returns the identity encoded in the JWT (id, email, role) after JwtAuthGuard validates the token.',
   })
   @ApiBearerAuth('access-token')
   @ApiWrappedResponse(MeResponseDto, { description: 'Current user identity' })

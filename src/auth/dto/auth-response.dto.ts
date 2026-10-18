@@ -16,7 +16,9 @@ export class AuthUserDto {
 }
 
 export class RegisterResponseDto {
-  @ApiProperty({ example: 'Registration successful. Please login to continue.' })
+  @ApiProperty({
+    example: 'Registration successful. Please login to continue.',
+  })
   message: string;
 
   @ApiProperty({ type: AuthUserDto })
@@ -24,7 +26,10 @@ export class RegisterResponseDto {
 }
 
 export class LoginResponseDto {
-  @ApiProperty({ description: 'JWT to send as "Authorization: Bearer <token>" on protected routes' })
+  @ApiProperty({
+    description:
+      'JWT to send as "Authorization: Bearer <token>" on protected routes',
+  })
   access_token: string;
 
   @ApiProperty({ type: AuthUserDto })

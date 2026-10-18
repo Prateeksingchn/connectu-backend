@@ -54,10 +54,16 @@ describe('FriendshipsService', () => {
     });
 
     it('rejects while the two users still share an active chat room', async () => {
-      chatRoomRepository.findActiveByUserId.mockImplementation(async (userId: string) =>
-        userId === requesterId
-          ? { id: 'room-1', user1Id: requesterId, user2Id: addresseeId, isActive: true }
-          : null,
+      chatRoomRepository.findActiveByUserId.mockImplementation(
+        async (userId: string) =>
+          userId === requesterId
+            ? {
+                id: 'room-1',
+                user1Id: requesterId,
+                user2Id: addresseeId,
+                isActive: true,
+              }
+            : null,
       );
 
       await expect(
@@ -101,7 +107,9 @@ describe('FriendshipsService', () => {
 
       await expect(
         service.sendFriendRequest(requesterId, { addresseeId }),
-      ).rejects.toThrow(new ConflictException('Friend request already pending'));
+      ).rejects.toThrow(
+        new ConflictException('Friend request already pending'),
+      );
     });
 
     it('rejects with a conflict and refuses to recreate a previously rejected request', async () => {
@@ -113,7 +121,9 @@ describe('FriendshipsService', () => {
       await expect(
         service.sendFriendRequest(requesterId, { addresseeId }),
       ).rejects.toThrow(
-        new ConflictException('Friend request was rejected and cannot be recreated'),
+        new ConflictException(
+          'Friend request was rejected and cannot be recreated',
+        ),
       );
     });
 
@@ -123,7 +133,9 @@ describe('FriendshipsService', () => {
         friendship: { id: 'f-new', status: FriendshipStatus.PENDING },
       });
 
-      const result = await service.sendFriendRequest(requesterId, { addresseeId });
+      const result = await service.sendFriendRequest(requesterId, {
+        addresseeId,
+      });
 
       expect(friendshipRepository.createIfAbsent).toHaveBeenCalledWith(
         requesterId,
@@ -214,7 +226,9 @@ describe('FriendshipsService', () => {
         'f-1',
         FriendshipStatus.ACCEPTED,
       );
-      expect(result).toEqual({ message: 'Friend request accepted successfully' });
+      expect(result).toEqual({
+        message: 'Friend request accepted successfully',
+      });
     });
 
     it('rejects a pending request on the happy path', async () => {
@@ -231,7 +245,9 @@ describe('FriendshipsService', () => {
         status: FriendshipStatus.REJECTED,
       });
 
-      expect(result).toEqual({ message: 'Friend request rejected successfully' });
+      expect(result).toEqual({
+        message: 'Friend request rejected successfully',
+      });
     });
   });
 
@@ -243,15 +259,27 @@ describe('FriendshipsService', () => {
           requesterId,
           addresseeId,
           addressee: { id: addresseeId, name: 'Bob', email: 'bob@example.com' },
-          requester: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
+          requester: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
           createdAt: 'yesterday',
         },
         {
           id: 'f-2',
           requesterId: 'user-c',
           addresseeId: requesterId,
-          addressee: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
-          requester: { id: 'user-c', name: 'Carol', email: 'carol@example.com' },
+          addressee: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
+          requester: {
+            id: 'user-c',
+            name: 'Carol',
+            email: 'carol@example.com',
+          },
           createdAt: 'today',
         },
       ]);
@@ -278,20 +306,28 @@ describe('FriendshipsService', () => {
       friendshipRepository.findPendingIncomingRequests.mockResolvedValue([
         {
           id: 'f-1',
-          requester: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
+          requester: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
           createdAt: 'today',
         },
       ]);
 
       const result = await service.getPendingRequests(addresseeId);
 
-      expect(friendshipRepository.findPendingIncomingRequests).toHaveBeenCalledWith(
-        addresseeId,
-      );
+      expect(
+        friendshipRepository.findPendingIncomingRequests,
+      ).toHaveBeenCalledWith(addresseeId);
       expect(result).toEqual([
         {
           friendshipId: 'f-1',
-          requester: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
+          requester: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
           createdAt: 'today',
         },
       ]);

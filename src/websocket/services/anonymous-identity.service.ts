@@ -15,20 +15,81 @@ export class AnonymousIdentityService {
 
   // Adjective pool for generating names
   private readonly adjectives = [
-    'Silent', 'Curious', 'Brave', 'Swift', 'Clever', 'Mystic', 'Bold',
-    'Calm', 'Wise', 'Bright', 'Dark', 'Wild', 'Gentle', 'Fierce',
-    'Noble', 'Ancient', 'Young', 'Quick', 'Steady', 'Lucky', 'Happy',
-    'Sneaky', 'Proud', 'Humble', 'Bold', 'Shy', 'Eager', 'Calm',
-    'Witty', 'Sharp', 'Smooth', 'Rough', 'Smooth', 'Crisp', 'Fresh'
+    'Silent',
+    'Curious',
+    'Brave',
+    'Swift',
+    'Clever',
+    'Mystic',
+    'Bold',
+    'Calm',
+    'Wise',
+    'Bright',
+    'Dark',
+    'Wild',
+    'Gentle',
+    'Fierce',
+    'Noble',
+    'Ancient',
+    'Young',
+    'Quick',
+    'Steady',
+    'Lucky',
+    'Happy',
+    'Sneaky',
+    'Proud',
+    'Humble',
+    'Bold',
+    'Shy',
+    'Eager',
+    'Calm',
+    'Witty',
+    'Sharp',
+    'Smooth',
+    'Rough',
+    'Smooth',
+    'Crisp',
+    'Fresh',
   ];
 
   // Noun pool for generating names
   private readonly nouns = [
-    'Fox', 'Coder', 'Otter', 'Eagle', 'Wolf', 'Bear', 'Tiger', 'Lion',
-    'Dragon', 'Phoenix', 'Raven', 'Hawk', 'Falcon', 'Shark', 'Dolphin',
-    'Penguin', 'Owl', 'Cat', 'Dog', 'Horse', 'Deer', 'Rabbit', 'Squirrel',
-    'Badger', 'Lynx', 'Jaguar', 'Panther', 'Leopard', 'Cheetah', 'Coyote',
-    'Mongoose', 'Weasel', 'Ferret', 'Stoat', 'Marten', 'Wolverine'
+    'Fox',
+    'Coder',
+    'Otter',
+    'Eagle',
+    'Wolf',
+    'Bear',
+    'Tiger',
+    'Lion',
+    'Dragon',
+    'Phoenix',
+    'Raven',
+    'Hawk',
+    'Falcon',
+    'Shark',
+    'Dolphin',
+    'Penguin',
+    'Owl',
+    'Cat',
+    'Dog',
+    'Horse',
+    'Deer',
+    'Rabbit',
+    'Squirrel',
+    'Badger',
+    'Lynx',
+    'Jaguar',
+    'Panther',
+    'Leopard',
+    'Cheetah',
+    'Coyote',
+    'Mongoose',
+    'Weasel',
+    'Ferret',
+    'Stoat',
+    'Marten',
+    'Wolverine',
   ];
 
   /**
@@ -51,9 +112,8 @@ export class AnonymousIdentityService {
     const maxAttempts = 100;
 
     do {
-      const adjective = this.adjectives[
-        Math.floor(Math.random() * this.adjectives.length)
-      ];
+      const adjective =
+        this.adjectives[Math.floor(Math.random() * this.adjectives.length)];
       const noun = this.nouns[Math.floor(Math.random() * this.nouns.length)];
       anonymousName = `${adjective}${noun}`;
       attempts++;
@@ -132,7 +192,9 @@ export class AnonymousIdentityService {
   /**
    * Get all users in a room with their anonymous names
    */
-  getRoomUsers(roomId: string): Array<{ userId: string; anonymousName: string }> {
+  getRoomUsers(
+    roomId: string,
+  ): Array<{ userId: string; anonymousName: string }> {
     const roomMapping = this.roomIdentities.get(roomId);
     if (!roomMapping) {
       return [];
@@ -144,4 +206,3 @@ export class AnonymousIdentityService {
     }));
   }
 }
-

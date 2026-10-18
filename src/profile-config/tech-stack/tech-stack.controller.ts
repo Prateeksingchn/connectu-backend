@@ -34,7 +34,10 @@ export class TechStackController {
     description:
       'Returns every tech-stack option available for user profiles and matching. Public endpoint, no authentication required.',
   })
-  @ApiWrappedResponse(TechStack, { description: 'List of tech stack options', isArray: true })
+  @ApiWrappedResponse(TechStack, {
+    description: 'List of tech stack options',
+    isArray: true,
+  })
   @Get()
   findAll() {
     return this.service.findAll();
@@ -44,10 +47,11 @@ export class TechStackController {
     summary: 'Get a tech stack option by id',
     description:
       'Looks up a single tech-stack option by its numeric id. Public endpoint. Note: the service does not throw ' +
-      "NotFoundException — if no tech-stack option matches, the response is still 200 with `data: null`.",
+      'NotFoundException — if no tech-stack option matches, the response is still 200 with `data: null`.',
   })
   @ApiWrappedResponse(TechStack, {
-    description: 'Tech stack option found (data is null if no option exists with that id)',
+    description:
+      'Tech stack option found (data is null if no option exists with that id)',
   })
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -62,7 +66,10 @@ export class TechStackController {
       'column has a unique DB constraint, so inserting a duplicate name fails at the database level and ' +
       'surfaces as a generic 500 error rather than a 409.',
   })
-  @ApiWrappedResponse(TechStack, { status: 201, description: 'Tech stack option created' })
+  @ApiWrappedResponse(TechStack, {
+    status: 201,
+    description: 'Tech stack option created',
+  })
   @ApiErrorResponse(
     400,
     'Validation failed (e.g. name shorter than 2 characters)',
@@ -94,7 +101,8 @@ export class TechStackController {
       'non-existent id still returns 200 with an affected count of 0 rather than a 404.',
   })
   @ApiWrappedOkResponse({
-    description: 'TypeORM update result (raw update outcome, not the updated TechStack entity)',
+    description:
+      'TypeORM update result (raw update outcome, not the updated TechStack entity)',
     example: { generatedMaps: [], raw: [], affected: 1 },
   })
   @ApiErrorResponse(
@@ -111,7 +119,10 @@ export class TechStackController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleName.ADMIN)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTechStackDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTechStackDto,
+  ) {
     return this.service.update(id, dto);
   }
 

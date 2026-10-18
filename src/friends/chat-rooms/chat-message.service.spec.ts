@@ -22,7 +22,10 @@ describe('ChatMessageService', () => {
       providers: [
         ChatMessageService,
         { provide: ChatMessageRepository, useValue: chatMessageRepository },
-        { provide: FriendChatRoomRepository, useValue: friendChatRoomRepository },
+        {
+          provide: FriendChatRoomRepository,
+          useValue: friendChatRoomRepository,
+        },
       ],
     }).compile();
 
@@ -59,9 +62,9 @@ describe('ChatMessageService', () => {
     it('throws when the friend chat room does not exist', async () => {
       friendChatRoomRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.findByRoomId('room-1', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.findByRoomId('room-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(chatMessageRepository.findByRoomId).not.toHaveBeenCalled();
     });
 

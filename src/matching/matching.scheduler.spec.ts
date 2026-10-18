@@ -70,7 +70,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('resets the in-progress guard after an error so the next tick is not stuck', async () => {
-      redisService.getMatchingQueue.mockRejectedValueOnce(new Error('redis down'));
+      redisService.getMatchingQueue.mockRejectedValueOnce(
+        new Error('redis down'),
+      );
       await expect(scheduler.processReadyUsers()).resolves.toBeUndefined();
 
       redisService.getMatchingQueue.mockResolvedValueOnce([]);
@@ -100,8 +102,20 @@ describe('MatchingScheduler', () => {
 
     it('attempts a match once exactly 2 users have waited past the threshold, and stops once they are paired', async () => {
       const readyScore = Date.now() - 3 * 60 * 1000; // waited 3 minutes ago
-      const a = { userId: 'a', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const b = { userId: 'b', interests: [], hobbies: [], techStack: [], score: readyScore };
+      const a = {
+        userId: 'a',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const b = {
+        userId: 'b',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
       redisService.getMatchingQueue.mockResolvedValue([a, b]);
       matchingService.findBestMatchForUser.mockResolvedValue({
         match: b,
@@ -119,8 +133,20 @@ describe('MatchingScheduler', () => {
 
     it('keeps trying subsequent users in the same tick when an earlier pairing attempt finds no match', async () => {
       const readyScore = Date.now() - 3 * 60 * 1000;
-      const a = { userId: 'a', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const b = { userId: 'b', interests: [], hobbies: [], techStack: [], score: readyScore };
+      const a = {
+        userId: 'a',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const b = {
+        userId: 'b',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
       redisService.getMatchingQueue.mockResolvedValue([a, b]);
       matchingService.findBestMatchForUser.mockResolvedValue(null);
 
@@ -129,48 +155,110 @@ describe('MatchingScheduler', () => {
       // Neither pairing attempt succeeds, so both a (against [b]) and b (against
       // [a], since a is still unprocessed) get tried within the same tick.
       expect(matchingService.findBestMatchForUser).toHaveBeenCalledTimes(2);
-      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(1, a, [b]);
-      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(2, b, [a]);
+      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(
+        1,
+        a,
+        [b],
+      );
+      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(
+        2,
+        b,
+        [a],
+      );
     });
 
     it('marks both members of a match as processed so neither is matched again this tick', async () => {
       const readyScore = Date.now() - 3 * 60 * 1000;
-      const a = { userId: 'a', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const b = { userId: 'b', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const c = { userId: 'c', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const d = { userId: 'd', interests: [], hobbies: [], techStack: [], score: readyScore };
+      const a = {
+        userId: 'a',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const b = {
+        userId: 'b',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const c = {
+        userId: 'c',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const d = {
+        userId: 'd',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
       redisService.getMatchingQueue.mockResolvedValue([a, b, c, d]);
 
-      matchingService.findBestMatchForUser.mockImplementation(async (user: any) => {
-        if (user.userId === 'a') {
-          return { match: b, score: 5, roomId: 'room-ab' };
-        }
-        if (user.userId === 'c') {
-          return { match: d, score: 3, roomId: 'room-cd' };
-        }
-        return null;
-      });
+      matchingService.findBestMatchForUser.mockImplementation(
+        async (user: any) => {
+          if (user.userId === 'a') {
+            return { match: b, score: 5, roomId: 'room-ab' };
+          }
+          if (user.userId === 'c') {
+            return { match: d, score: 3, roomId: 'room-cd' };
+          }
+          return null;
+        },
+      );
 
       await scheduler.processReadyUsers();
 
       expect(matchingService.findBestMatchForUser).toHaveBeenCalledTimes(2);
-      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(1, a, [b, c, d]);
-      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(2, c, [d]);
+      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(
+        1,
+        a,
+        [b, c, d],
+      );
+      expect(matchingService.findBestMatchForUser).toHaveBeenNthCalledWith(
+        2,
+        c,
+        [d],
+      );
     });
 
     it('stops looking for matches once the only remaining ready user has no candidates left', async () => {
       const readyScore = Date.now() - 3 * 60 * 1000;
-      const a = { userId: 'a', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const b = { userId: 'b', interests: [], hobbies: [], techStack: [], score: readyScore };
-      const c = { userId: 'c', interests: [], hobbies: [], techStack: [], score: readyScore };
+      const a = {
+        userId: 'a',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const b = {
+        userId: 'b',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
+      const c = {
+        userId: 'c',
+        interests: [],
+        hobbies: [],
+        techStack: [],
+        score: readyScore,
+      };
       redisService.getMatchingQueue.mockResolvedValue([a, b, c]);
 
-      matchingService.findBestMatchForUser.mockImplementation(async (user: any) => {
-        if (user.userId === 'a') {
-          return { match: b, score: 1, roomId: 'room-ab' };
-        }
-        return null;
-      });
+      matchingService.findBestMatchForUser.mockImplementation(
+        async (user: any) => {
+          if (user.userId === 'a') {
+            return { match: b, score: 1, roomId: 'room-ab' };
+          }
+          return null;
+        },
+      );
 
       await scheduler.processReadyUsers();
 
@@ -182,13 +270,17 @@ describe('MatchingScheduler', () => {
   describe('expireChatRooms', () => {
     it('skips an overlapping tick while a previous one is still in flight', async () => {
       const gate = deferred<any[]>();
-      chatRoomRepository.findExpiredActiveRooms.mockReturnValueOnce(gate.promise);
+      chatRoomRepository.findExpiredActiveRooms.mockReturnValueOnce(
+        gate.promise,
+      );
 
       const firstTick = scheduler.expireChatRooms();
       const secondTick = scheduler.expireChatRooms();
 
       await secondTick;
-      expect(chatRoomRepository.findExpiredActiveRooms).toHaveBeenCalledTimes(1);
+      expect(chatRoomRepository.findExpiredActiveRooms).toHaveBeenCalledTimes(
+        1,
+      );
 
       gate.resolve([]);
       await firstTick;
@@ -203,7 +295,9 @@ describe('MatchingScheduler', () => {
       chatRoomRepository.findExpiredActiveRooms.mockResolvedValueOnce([]);
       await scheduler.expireChatRooms();
 
-      expect(chatRoomRepository.findExpiredActiveRooms).toHaveBeenCalledTimes(2);
+      expect(chatRoomRepository.findExpiredActiveRooms).toHaveBeenCalledTimes(
+        2,
+      );
     });
 
     it('does nothing when there are no expired rooms', async () => {

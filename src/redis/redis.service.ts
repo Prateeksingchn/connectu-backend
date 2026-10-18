@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { REDIS_KEYS, REDIS_TTL } from './redis.constants';
@@ -23,7 +28,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client.on('ready', () => {
       this.logger.log('Redis connected successfully');
     });
-    
+
     this.client.on('error', (err) => {
       this.logger.error(`Redis connection error: ${err.message}`, err.stack);
     });
@@ -65,7 +70,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const client = this.getClient();
     const score = Date.now(); // Current timestamp as score
     const member = JSON.stringify({ userId, ...profileData });
-    
+
     await client.zadd(REDIS_KEYS.MATCHING_QUEUE, score, member);
     this.logger.log(`User ${userId} added to matching queue`);
   }
@@ -121,18 +126,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    */
   async removeFromMatchingQueue(userIds: string[]): Promise<void> {
     const client = this.getClient();
-    
+
     try {
       // Get all queue members
       const allMembers = await client.zrange(REDIS_KEYS.MATCHING_QUEUE, 0, -1);
-      
+
       if (allMembers.length === 0) {
         this.logger.debug(`Queue is empty, nothing to remove`);
         return;
       }
 
       // Find members to remove
-      const toRemove = allMembers.filter(member => {
+      const toRemove = allMembers.filter((member) => {
         try {
           const data = JSON.parse(member);
           return userIds.includes(data.userId);
@@ -144,7 +149,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       if (toRemove.length > 0) {
         await client.zrem(REDIS_KEYS.MATCHING_QUEUE, ...toRemove);
-        this.logger.log(`✅ Removed ${toRemove.length} users from matching queue`);
+        this.logger.log(
+          `✅ Removed ${toRemove.length} users from matching queue`,
+        );
       } else {
         this.logger.warn(`⚠️ No users found to remove: ${userIds.join(', ')}`);
       }
@@ -159,7 +166,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    */
   async isInMatchingQueue(userId: string): Promise<boolean> {
     const queue = await this.getMatchingQueue();
-    return queue.some(member => member.userId === userId);
+    return queue.some((member) => member.userId === userId);
   }
 
   /**
@@ -180,10 +187,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @param roomId Room ID
    * @param ttl Time to live in seconds (default: 10 minutes)
    */
-  async setUserRoom(userId: string, roomId: string, ttl = REDIS_TTL.USER_ROOM): Promise<void> {
+  async setUserRoom(
+    userId: string,
+    roomId: string,
+    ttl = REDIS_TTL.USER_ROOM,
+  ): Promise<void> {
     const client = this.getClient();
     const key = REDIS_KEYS.USER_ROOM(userId);
-    
+
     await client.set(key, roomId, 'EX', ttl);
     this.logger.log(`User ${userId} joined room ${roomId}`);
   }
@@ -213,10 +224,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * @param roomData Room metadata
    * @param ttl Time to live in seconds
    */
-  async setActiveRoom(roomId: string, roomData: any, ttl = REDIS_TTL.ACTIVE_ROOM): Promise<void> {
+  async setActiveRoom(
+    roomId: string,
+    roomData: any,
+    ttl = REDIS_TTL.ACTIVE_ROOM,
+  ): Promise<void> {
     const client = this.getClient();
     const key = REDIS_KEYS.ACTIVE_ROOM(roomId);
-    
+
     await client.set(key, JSON.stringify(roomData), 'EX', ttl);
   }
 
@@ -265,4 +280,3 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.logger.warn('Matching queue cleared');
   }
 }
-

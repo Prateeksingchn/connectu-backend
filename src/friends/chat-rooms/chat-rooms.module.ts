@@ -38,4 +38,3 @@ import { MatchingModule } from '../../matching/matching.module';
   ],
 })
 export class ChatRoomsModule {}
-

@@ -43,9 +43,15 @@ describe('ChatRoomRequestService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatRoomRequestService,
-        { provide: ChatRoomRequestRepository, useValue: chatRoomRequestRepository },
+        {
+          provide: ChatRoomRequestRepository,
+          useValue: chatRoomRequestRepository,
+        },
         { provide: FriendshipRepository, useValue: friendshipRepository },
-        { provide: FriendChatRoomRepository, useValue: friendChatRoomRepository },
+        {
+          provide: FriendChatRoomRepository,
+          useValue: friendChatRoomRepository,
+        },
         { provide: WebSocketGateway, useValue: wsGateway },
       ],
     }).compile();
@@ -94,8 +100,12 @@ describe('ChatRoomRequestService', () => {
       friendshipRepository.findBetweenUsers.mockResolvedValue({
         status: FriendshipStatus.ACCEPTED,
       });
-      chatRoomRequestRepository.findBetweenUsers.mockResolvedValue({ id: 'req-old' });
-      chatRoomRequestRepository.resetRequest.mockResolvedValue({ id: 'req-old' });
+      chatRoomRequestRepository.findBetweenUsers.mockResolvedValue({
+        id: 'req-old',
+      });
+      chatRoomRequestRepository.resetRequest.mockResolvedValue({
+        id: 'req-old',
+      });
 
       const result = await service.createChatRoomRequest(requesterId, friendId);
 
@@ -211,7 +221,9 @@ describe('ChatRoomRequestService', () => {
         addresseeId: friendId,
       });
       chatRoomRequestRepository.updateStatus.mockResolvedValue(true);
-      friendshipRepository.findBetweenUsers.mockResolvedValue({ id: 'friendship-1' });
+      friendshipRepository.findBetweenUsers.mockResolvedValue({
+        id: 'friendship-1',
+      });
       friendChatRoomRepository.create.mockResolvedValue({ id: 'room-new' });
 
       const result = await service.respondToChatRoomRequest(friendId, {
@@ -260,7 +272,9 @@ describe('ChatRoomRequestService', () => {
         WebSocketEvent.CHAT_ROOM_REQUEST_REJECTED,
         expect.objectContaining({ requestId: 'req-1' }),
       );
-      expect(result).toEqual({ message: 'Chat room request rejected successfully' });
+      expect(result).toEqual({
+        message: 'Chat room request rejected successfully',
+      });
     });
   });
 
@@ -269,7 +283,11 @@ describe('ChatRoomRequestService', () => {
       chatRoomRequestRepository.findPendingIncomingRequests.mockResolvedValue([
         {
           id: 'req-1',
-          requester: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
+          requester: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
           createdAt: 'today',
         },
       ]);
@@ -279,7 +297,11 @@ describe('ChatRoomRequestService', () => {
       expect(result).toEqual([
         {
           requestId: 'req-1',
-          requester: { id: requesterId, name: 'Alice', email: 'alice@example.com' },
+          requester: {
+            id: requesterId,
+            name: 'Alice',
+            email: 'alice@example.com',
+          },
           createdAt: 'today',
         },
       ]);
