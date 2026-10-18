@@ -56,7 +56,7 @@ export class AuthController {
     'Email not found or password does not match',
     'Invalid credentials',
   )
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
