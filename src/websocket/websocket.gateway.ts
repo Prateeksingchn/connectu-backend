@@ -149,14 +149,16 @@ export class WebSocketGateway
         const user = await this.usersRepository.findById(userId);
         displayName = user ? user.name : null;
       } else {
+        // Matching-room pseudonyms are pre-assigned at match time (and shown on
+        // the reveal card), so they must survive a leave/disconnect: a
+        // reconnecting user has to come back under the same name, and the
+        // partner who hasn't joined yet must keep theirs. They are cleared
+        // only when the room ends (MatchingService.expireChatRoom /
+        // endActiveChatRoom).
         displayName = this.anonymousIdentityService.getAnonymousName(
           roomId,
           userId,
         );
-        // Remove anonymous identity for matching rooms
-        if (displayName) {
-          this.anonymousIdentityService.removeAnonymousName(roomId, userId);
-        }
       }
 
       // Notify room members
@@ -171,10 +173,6 @@ export class WebSocketGateway
 
       if (members.size === 0) {
         this.roomMemberships.delete(roomId);
-        // Clean up all anonymous identities for matching rooms only
-        if (!isFriendRoom) {
-          this.anonymousIdentityService.clearRoomIdentities(roomId);
-        }
       }
     }
   }
@@ -280,19 +278,13 @@ export class WebSocketGateway
 
       if (members.size === 0) {
         this.roomMemberships.delete(roomId);
-        // Clean up all anonymous identities for this room
-        this.anonymousIdentityService.clearRoomIdentities(roomId);
       }
     }
 
-    // Get display name before removing it
+    // Anonymous identities are deliberately kept here: they are pre-assigned
+    // at match time and only cleared when the room ends (see
+    // removeUserFromRooms).
     const displayName = await this.getDisplayName(roomId, userId);
-
-    // Remove anonymous identity (only for matching rooms)
-    const isFriendRoom = await this.isFriendChatRoom(roomId);
-    if (!isFriendRoom) {
-      this.anonymousIdentityService.removeAnonymousName(roomId, userId);
-    }
 
     this.logger.log(
       `User ${userId.substring(0, 8)} (${displayName}) left room ${roomId.substring(0, 8)}`,
@@ -508,9 +500,11 @@ export class WebSocketGateway
   }
 
   /**
-   * How many users currently hold a live socket on this process. Aggregate
-   * only - callers (e.g. the /matching/stats presence counter) must not be
-   * able to derive *who* is online from it. Like the map it reads, this
+   * How many distinct users have announced themselves with `user:online` on
+   * this process. One entry per user (a second tab replaces the first), and a
+   * socket that connected but never emitted `user:online` is not counted.
+   * Aggregate only - callers (e.g. the /matching/stats presence counter) must
+   * not be able to derive *who* is online from it. Like the map it reads, this
    * rebuilds from scratch on restart.
    */
   getOnlineUserCount(): number {

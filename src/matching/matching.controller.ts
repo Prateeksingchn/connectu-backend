@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
@@ -23,6 +24,19 @@ import {
   ApiErrorResponse,
   ApiWrappedOkResponse,
 } from '../common/decorators/api-response.decorator';
+
+/**
+ * Throttle key for /matching/stats. The global ThrottlerGuard runs before
+ * JwtAuthGuard, so req.user isn't populated yet; keying on the bearer token
+ * limits per session (one user's polling can't eat a shared-NAT neighbour's
+ * budget) and falls back to the IP when there is no token.
+ */
+export function statsThrottleTracker(req: Record<string, any>): string {
+  const auth = req.headers?.authorization;
+  return typeof auth === 'string' && auth
+    ? `token:${createHash('sha256').update(auth).digest('hex')}`
+    : `ip:${req.ip}`;
+}
 
 @ApiTags('matching')
 @ApiBearerAuth('access-token')
@@ -194,6 +208,14 @@ export class MatchingController {
     example: { usersInQueue: 3, usersOnline: 12 },
   })
   @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @ApiErrorResponse(
+    429,
+    'More than 30 requests in a minute from the same session',
+    'ThrottlerException: Too Many Requests',
+  )
+  @Throttle({
+    default: { limit: 30, ttl: 60_000, getTracker: statsThrottleTracker },
+  })
   @Get('stats')
   async getStats() {
     return this.matchingService.getStats();

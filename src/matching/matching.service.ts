@@ -390,6 +390,10 @@ export class MatchingService {
     await this.redisService.removeUserRoom(chatRoom.user2Id);
     await this.redisService.deleteActiveRoom(id);
 
+    // Pseudonyms outlive leave/disconnect (they're pre-assigned at match
+    // time), so ending the room is where they get released.
+    this.anonymousIdentityService.clearRoomIdentities(id);
+
     this.logger.log(`Chat room ${id} ended by user ${userId}`);
 
     return { message: 'Chat room ended successfully' };

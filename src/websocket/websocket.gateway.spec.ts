@@ -210,10 +210,10 @@ describe('WebSocketGateway', () => {
 
       await gateway.handleDisconnect(client);
 
-      expect(anonymousIdentityService.removeAnonymousName).toHaveBeenCalledWith(
-        'room-1',
-        'user-1',
-      );
+      // pseudonyms are pre-assigned at match time and outlive a disconnect
+      expect(
+        anonymousIdentityService.removeAnonymousName,
+      ).not.toHaveBeenCalled();
       expect(server.to).toHaveBeenCalledWith('room-1');
       expect(server.to('room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_LEFT,
@@ -229,7 +229,7 @@ describe('WebSocketGateway', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('clears the whole room once the last member disconnects from a matching room', async () => {
+    it('drops membership but keeps the identities once the last member disconnects from a matching room', async () => {
       const client = createMockSocket('socket-1');
       client.userId = 'user-1';
       gateway.handleUserOnline(client);
@@ -241,9 +241,10 @@ describe('WebSocketGateway', () => {
       await gateway.handleDisconnect(client);
 
       expect(gateway.getRoomMembers('room-1')).toBeUndefined();
-      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
-        'room-1',
-      );
+      // identities are released only when the room ends, not when it empties
+      expect(
+        anonymousIdentityService.clearRoomIdentities,
+      ).not.toHaveBeenCalled();
     });
 
     it('uses the real display name and skips anonymous-identity cleanup for a friend room', async () => {
@@ -309,9 +310,9 @@ describe('WebSocketGateway', () => {
 
       expect(gateway.isUserOnline('user-1')).toBe(false);
       expect(gateway.getRoomMembers('room-1')).toBeUndefined();
-      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
-        'room-1',
-      );
+      expect(
+        anonymousIdentityService.clearRoomIdentities,
+      ).not.toHaveBeenCalled();
       expect(server.to('room-1').emit).toHaveBeenCalledWith(
         WebSocketEvent.USER_LEFT,
         expect.objectContaining({ anonymousName: 'WittyFox' }),
@@ -465,5 +466,104 @@ describe('WebSocketGateway', () => {
 
       expect(sent).toBe(false);
     });
+  });
+});
+
+// Uses the real AnonymousIdentityService (not a mock) so the test exercises
+// the actual name lifecycle across join / leave / disconnect / re-join.
+describe('WebSocketGateway matching-room pseudonyms', () => {
+  let gateway: WebSocketGateway;
+  let identities: AnonymousIdentityService;
+  let chatRoomRepository: { findValidActiveRoom: jest.Mock };
+  let friendChatRoomRepository: { findValidActiveRoom: jest.Mock };
+
+  beforeEach(async () => {
+    chatRoomRepository = {
+      findValidActiveRoom: jest.fn().mockResolvedValue({ id: 'room-1' }),
+    };
+    friendChatRoomRepository = {
+      findValidActiveRoom: jest.fn().mockResolvedValue(null),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WebSocketGateway,
+        AnonymousIdentityService,
+        { provide: ChatRoomRepository, useValue: chatRoomRepository },
+        {
+          provide: FriendChatRoomRepository,
+          useValue: friendChatRoomRepository,
+        },
+        { provide: ChatMessageService, useValue: { saveMessage: jest.fn() } },
+        {
+          provide: FriendChatRoomService,
+          useValue: { updateLastMessage: jest.fn() },
+        },
+        { provide: UsersRepository, useValue: { findById: jest.fn() } },
+        { provide: JwtService, useValue: { verifyAsync: jest.fn() } },
+      ],
+    }).compile();
+
+    gateway = module.get(WebSocketGateway);
+    identities = module.get(AnonymousIdentityService);
+    gateway.server = createMockServer();
+  });
+
+  const socketFor = (userId: string) => {
+    const s = createMockSocket(`socket-${userId}`);
+    s.userId = userId;
+    return s;
+  };
+
+  it('regression: A joins and leaves before B joins; A re-joins under the same name the reveal showed, and B keeps theirs', async () => {
+    // What MatchingService.createMatch() does before emitting MATCH_FOUND.
+    const nameA = identities.assignAnonymousName('room-1', 'user-a');
+    const nameB = identities.assignAnonymousName('room-1', 'user-b');
+
+    const a1 = socketFor('user-a');
+    await gateway.handleJoinRoom(a1, { roomId: 'room-1' });
+    expect(a1.emit).toHaveBeenCalledWith(
+      WebSocketEvent.JOIN_ROOM,
+      expect.objectContaining({ anonymousName: nameA }),
+    );
+
+    // A leaves while B is still on the reveal card (room becomes empty).
+    await gateway.handleLeaveRoom(a1, { roomId: 'room-1' });
+
+    // A comes back, then B finally joins.
+    const a2 = socketFor('user-a');
+    await gateway.handleJoinRoom(a2, { roomId: 'room-1' });
+    const b = socketFor('user-b');
+    await gateway.handleJoinRoom(b, { roomId: 'room-1' });
+
+    expect(a2.emit).toHaveBeenCalledWith(
+      WebSocketEvent.JOIN_ROOM,
+      expect.objectContaining({ anonymousName: nameA }),
+    );
+    expect(b.emit).toHaveBeenCalledWith(
+      WebSocketEvent.JOIN_ROOM,
+      expect.objectContaining({ anonymousName: nameB }),
+    );
+  });
+
+  it('regression: a disconnect (e.g. page refresh) before the partner joins also keeps both names', async () => {
+    const nameA = identities.assignAnonymousName('room-1', 'user-a');
+    const nameB = identities.assignAnonymousName('room-1', 'user-b');
+
+    const a1 = socketFor('user-a');
+    gateway.handleUserOnline(a1);
+    await gateway.handleJoinRoom(a1, { roomId: 'room-1' });
+    await gateway.handleDisconnect(a1);
+
+    expect(identities.getAnonymousName('room-1', 'user-a')).toBe(nameA);
+    expect(identities.getAnonymousName('room-1', 'user-b')).toBe(nameB);
+  });
+
+  it('names are released when the room ends, not before', () => {
+    identities.assignAnonymousName('room-1', 'user-a');
+
+    identities.clearRoomIdentities('room-1');
+
+    expect(identities.getAnonymousName('room-1', 'user-a')).toBeNull();
   });
 });

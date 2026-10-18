@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MatchingController } from './matching.controller';
+import {
+  MatchingController,
+  statsThrottleTracker,
+} from './matching.controller';
 import { MatchingService } from './matching.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -74,6 +77,33 @@ describe('MatchingController', () => {
         []) as unknown[];
 
       expect(guards).toContain(JwtAuthGuard);
+    });
+
+    it('is rate limited to 30 requests per minute', () => {
+      const handler = MatchingController.prototype.getStats;
+
+      expect(Reflect.getMetadata('THROTTLER:LIMITdefault', handler)).toBe(30);
+      expect(Reflect.getMetadata('THROTTLER:TTLdefault', handler)).toBe(60_000);
+      expect(Reflect.getMetadata('THROTTLER:TRACKERdefault', handler)).toBe(
+        statsThrottleTracker,
+      );
+    });
+
+    it('throttles per session (token hash), falling back to IP without one', () => {
+      const a = statsThrottleTracker({
+        headers: { authorization: 'Bearer aaa' },
+        ip: '1.1.1.1',
+      });
+      const b = statsThrottleTracker({
+        headers: { authorization: 'Bearer bbb' },
+        ip: '1.1.1.1',
+      });
+
+      expect(a).not.toBe(b);
+      expect(a).not.toContain('aaa'); // raw token never used as a key
+      expect(statsThrottleTracker({ headers: {}, ip: '1.1.1.1' })).toBe(
+        'ip:1.1.1.1',
+      );
     });
 
     it('exposes counts only - never user identities', async () => {

@@ -373,6 +373,10 @@ describe('MatchingService', () => {
       expect(redisService.removeUserRoom).toHaveBeenCalledWith('user-1');
       expect(redisService.removeUserRoom).toHaveBeenCalledWith('user-2');
       expect(redisService.deleteActiveRoom).toHaveBeenCalledWith('room-1');
+      // Pseudonyms survive leave/disconnect, so ending the room releases them.
+      expect(anonymousIdentityService.clearRoomIdentities).toHaveBeenCalledWith(
+        'room-1',
+      );
       expect(result).toEqual({ message: 'Chat room ended successfully' });
     });
   });
