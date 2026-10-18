@@ -47,8 +47,14 @@ describe('MatchingService', () => {
       getUserSocketId: jest.fn(),
       getServer: jest.fn(),
       removeRoomMembership: jest.fn(),
+      getOnlineUserCount: jest.fn().mockReturnValue(0),
     };
-    anonymousIdentityService = { clearRoomIdentities: jest.fn() };
+    anonymousIdentityService = {
+      clearRoomIdentities: jest.fn(),
+      assignAnonymousName: jest.fn((_roomId: string, userId: string) =>
+        userId === 'user-1' ? 'CalmOtter' : 'WittyPenguin',
+      ),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -250,6 +256,81 @@ describe('MatchingService', () => {
         match: { userId: 'user-2', interests: [1], hobbies: [], techStack: [] },
         roomId: 'room-1',
       });
+    });
+
+    it('assigns both pseudonyms up front and tells each user who they matched with', async () => {
+      algorithmService.findBestMatch.mockReturnValue({
+        match: { userId: 'user-2', interests: [1], hobbies: [], techStack: [] },
+        score: 1,
+      });
+      chatRoomRepository.create.mockResolvedValue({
+        id: 'room-1',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await service.findBestMatchForUser(user, [candidate]);
+
+      expect(anonymousIdentityService.assignAnonymousName).toHaveBeenCalledWith(
+        'room-1',
+        'user-1',
+      );
+      expect(anonymousIdentityService.assignAnonymousName).toHaveBeenCalledWith(
+        'room-1',
+        'user-2',
+      );
+      expect(wsGateway.emitToUser).toHaveBeenCalledWith(
+        'user-1',
+        WebSocketEvent.MATCH_FOUND,
+        expect.objectContaining({
+          anonymousName: 'CalmOtter',
+          otherAnonymousName: 'WittyPenguin',
+        }),
+      );
+      expect(wsGateway.emitToUser).toHaveBeenCalledWith(
+        'user-2',
+        WebSocketEvent.MATCH_FOUND,
+        expect.objectContaining({
+          anonymousName: 'WittyPenguin',
+          otherAnonymousName: 'CalmOtter',
+        }),
+      );
+    });
+  });
+
+  describe('getStats', () => {
+    it("reports the Redis queue size and the gateway's live connection count", async () => {
+      redisService.getQueueSize.mockResolvedValue(3);
+      wsGateway.getOnlineUserCount.mockReturnValue(12);
+
+      expect(await service.getStats()).toEqual({
+        usersInQueue: 3,
+        usersOnline: 12,
+      });
+    });
+
+    it('returns zeroes when nobody is queued or connected', async () => {
+      redisService.getQueueSize.mockResolvedValue(0);
+      wsGateway.getOnlineUserCount.mockReturnValue(0);
+
+      expect(await service.getStats()).toEqual({
+        usersInQueue: 0,
+        usersOnline: 0,
+      });
+    });
+
+    it('returns counts only, never the queued users themselves', async () => {
+      redisService.getQueueSize.mockResolvedValue(2);
+      wsGateway.getOnlineUserCount.mockReturnValue(5);
+
+      const stats = await service.getStats();
+
+      expect(Object.keys(stats).sort()).toEqual([
+        'usersInQueue',
+        'usersOnline',
+      ]);
+      // getMatchingQueue() would hand back user ids and profile data; the
+      // counter must never reach for it.
+      expect(redisService.getMatchingQueue).not.toHaveBeenCalled();
     });
   });
 

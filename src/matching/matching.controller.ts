@@ -179,4 +179,23 @@ export class MatchingController {
   async getActiveRoom(@CurrentUser() user: any) {
     return this.matchingService.getActiveRoom(user.id);
   }
+
+  @ApiOperation({
+    summary: 'Aggregate queue/presence counters',
+    description:
+      'Powers the ambient "N people online now" indicator on the Discover screen. Returns counts ' +
+      'only - never user ids, names, or anything else that could identify who is queued or ' +
+      "connected. usersOnline is read from the WebSocket gateway's in-memory connection map, so it " +
+      'reflects the current process and resets on restart; usersInQueue is the size of the Redis ' +
+      'matching queue. Intended to be polled at a low frequency (the frontend polls every 30s).',
+  })
+  @ApiWrappedOkResponse({
+    description: 'Current aggregate counts',
+    example: { usersInQueue: 3, usersOnline: 12 },
+  })
+  @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @Get('stats')
+  async getStats() {
+    return this.matchingService.getStats();
+  }
 }

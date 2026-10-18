@@ -508,6 +508,16 @@ export class WebSocketGateway
   }
 
   /**
+   * How many users currently hold a live socket on this process. Aggregate
+   * only - callers (e.g. the /matching/stats presence counter) must not be
+   * able to derive *who* is online from it. Like the map it reads, this
+   * rebuilds from scratch on restart.
+   */
+  getOnlineUserCount(): number {
+    return this.userConnections.size;
+  }
+
+  /**
    * Get socket ID for a user
    */
   getUserSocketId(userId: string): string | undefined {

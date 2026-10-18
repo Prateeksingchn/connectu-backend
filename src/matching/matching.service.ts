@@ -261,7 +261,23 @@ export class MatchingService {
     await this.redisService.setUserRoom(user1.userId, chatRoom.id, 600);
     await this.redisService.setUserRoom(user2.userId, chatRoom.id, 600);
 
-    // 5. Notify both users via WebSocket
+    // 5. Assign both pseudonyms up front so MATCH_FOUND can name who you
+    // matched with (the frontend shows a short reveal before redirecting
+    // into the room). assignAnonymousName() is idempotent per room+user, so
+    // the gateway's own call on JOIN_ROOM returns these same names rather
+    // than minting different ones.
+    const user1AnonymousName =
+      this.anonymousIdentityService.assignAnonymousName(
+        chatRoom.id,
+        user1.userId,
+      );
+    const user2AnonymousName =
+      this.anonymousIdentityService.assignAnonymousName(
+        chatRoom.id,
+        user2.userId,
+      );
+
+    // 6. Notify both users via WebSocket
     const matchData = {
       roomId: chatRoom.id,
       matchScore: score,
@@ -274,6 +290,8 @@ export class MatchingService {
       {
         ...matchData,
         otherUserId: user2.userId,
+        anonymousName: user1AnonymousName,
+        otherAnonymousName: user2AnonymousName,
         message: 'Match found! Joining chat room...',
       },
     );
@@ -284,6 +302,8 @@ export class MatchingService {
       {
         ...matchData,
         otherUserId: user1.userId,
+        anonymousName: user2AnonymousName,
+        otherAnonymousName: user1AnonymousName,
         message: 'Match found! Joining chat room...',
       },
     );
@@ -497,6 +517,25 @@ export class MatchingService {
       otherUserId,
       matchScore: room.matchScore ?? null,
       expiresAt: room.expiresAt ?? null,
+    };
+  }
+
+  /**
+   * Aggregate presence/queue counters for the Discover screen's "N people
+   * online now" pill.
+   *
+   * Deliberately counts only - no user ids, names, or any value a caller
+   * could use to identify who is queued or connected. usersOnline reads the
+   * gateway's in-memory connection map, so it reflects *this* process and
+   * resets on restart; that's acceptable for an ambient liveness hint and
+   * avoids inventing a second source of truth for presence.
+   */
+  async getStats(): Promise<{ usersInQueue: number; usersOnline: number }> {
+    const usersInQueue = await this.redisService.getQueueSize();
+
+    return {
+      usersInQueue,
+      usersOnline: this.wsGateway.getOnlineUserCount(),
     };
   }
 
