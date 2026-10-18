@@ -244,12 +244,12 @@ describe('MatchingService', () => {
       expect(wsGateway.emitToUser).toHaveBeenCalledWith(
         'user-1',
         WebSocketEvent.MATCH_FOUND,
-        expect.objectContaining({ roomId: 'room-1', otherUserId: 'user-2' }),
+        expect.objectContaining({ roomId: 'room-1' }),
       );
       expect(wsGateway.emitToUser).toHaveBeenCalledWith(
         'user-2',
         WebSocketEvent.MATCH_FOUND,
-        expect.objectContaining({ roomId: 'room-1', otherUserId: 'user-1' }),
+        expect.objectContaining({ roomId: 'room-1' }),
       );
       expect(result).toEqual({
         score: 1,
@@ -294,6 +294,30 @@ describe('MatchingService', () => {
           otherAnonymousName: 'CalmOtter',
         }),
       );
+    });
+
+    it('MATCH_FOUND carries no real user id for either side', async () => {
+      algorithmService.findBestMatch.mockReturnValue({
+        match: { userId: 'user-2', interests: [1], hobbies: [], techStack: [] },
+        score: 1,
+      });
+      chatRoomRepository.create.mockResolvedValue({
+        id: 'room-1',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      await service.findBestMatchForUser(user, [candidate]);
+
+      const payloads = wsGateway.emitToUser.mock.calls
+        .filter(([, event]) => event === WebSocketEvent.MATCH_FOUND)
+        .map(([, , data]) => data as Record<string, unknown>);
+      expect(payloads).toHaveLength(2);
+      for (const payload of payloads) {
+        expect(payload).not.toHaveProperty('otherUserId');
+        const serialized = JSON.stringify(payload);
+        expect(serialized).not.toContain('user-1');
+        expect(serialized).not.toContain('user-2');
+      }
     });
   });
 
@@ -524,7 +548,6 @@ describe('MatchingService', () => {
 
       expect(result).toEqual({
         roomId: 'room-1',
-        otherUserId: 'user-2',
         matchScore: 5,
         expiresAt: new Date('2026-07-26T18:40:00.000Z'),
       });
@@ -543,7 +566,6 @@ describe('MatchingService', () => {
 
       expect(result).toEqual({
         roomId: 'room-1',
-        otherUserId: 'user-1',
         matchScore: null,
         expiresAt: null,
       });

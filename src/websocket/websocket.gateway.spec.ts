@@ -192,8 +192,13 @@ describe('WebSocketGateway', () => {
 
       expect(gateway.isUserOnline('user-1')).toBe(false);
       expect(server.emit).toHaveBeenCalledWith(WebSocketEvent.USER_OFFLINE, {
-        userId: 'user-1',
+        timestamp: expect.any(Date),
       });
+      // server-wide broadcast: must never carry a real user id
+      const payload = server.emit.mock.calls.find(
+        ([event]: [string]) => event === WebSocketEvent.USER_OFFLINE,
+      )[1];
+      expect(JSON.stringify(payload)).not.toContain('user-1');
     });
 
     it('removes the user from a matching room, clears their anonymous identity, and notifies remaining members', async () => {

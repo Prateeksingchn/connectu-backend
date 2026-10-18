@@ -117,8 +117,12 @@ export class WebSocketGateway
         disconnectedUserId = userId;
         this.logger.log(`[WebSocket] User offline: ${userId}`);
 
-        // Notify others that user went offline
-        this.server.emit(WebSocketEvent.USER_OFFLINE, { userId });
+        // Notify others that someone went offline. Deliberately carries no
+        // user id: this is a server-wide broadcast, and anonymous-chat users
+        // must not learn real ids (or who is who) from presence events.
+        this.server.emit(WebSocketEvent.USER_OFFLINE, {
+          timestamp: new Date(),
+        });
         break;
       }
     }

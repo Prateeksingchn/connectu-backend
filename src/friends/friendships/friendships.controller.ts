@@ -4,6 +4,8 @@ import {
   Patch,
   Get,
   Body,
+  Param,
+  ParseUUIDPipe,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -63,6 +65,46 @@ export class FriendshipsController {
     @Body() dto: SendFriendRequestDto,
   ) {
     return this.friendshipsService.sendFriendRequest(user.id, dto);
+  }
+
+  @ApiOperation({
+    summary: 'Send a friend request to the other person in an anonymous chat',
+    description:
+      'Used from an anonymous matching chat, where the client deliberately never learns the other user real id. ' +
+      'The caller must be a participant of the room, and the room must have ended or expired. ' +
+      'The other participant is resolved server-side and is never returned. Otherwise behaves exactly like POST /friends/request ' +
+      '(same duplicate, self and race protection).',
+  })
+  @ApiWrappedOkResponse({
+    status: 201,
+    description: 'Friend request created as PENDING',
+    example: {
+      message: 'Friend request sent successfully',
+      friendshipId: 'c4a2d0ef-5c2b-4f0b-8d3b-2345678901bc',
+    },
+  })
+  @ApiErrorResponse(
+    403,
+    'The chat room is still active',
+    'Cannot send friend request while chat room is active',
+  )
+  @ApiErrorResponse(
+    404,
+    'No such room, or the caller is not a participant of it',
+    'Chat room not found',
+  )
+  @ApiErrorResponse(
+    409,
+    'A friendship record already exists between these users (pending, accepted, or rejected)',
+    'Friend request already pending',
+  )
+  @ApiErrorResponse(401, 'Missing, invalid, or expired JWT', 'Unauthorized')
+  @Post('request/by-room/:roomId')
+  async sendFriendRequestByRoom(
+    @CurrentUser() user: any,
+    @Param('roomId', ParseUUIDPipe) roomId: string,
+  ) {
+    return this.friendshipsService.sendFriendRequestByRoom(user.id, roomId);
   }
 
   @ApiOperation({

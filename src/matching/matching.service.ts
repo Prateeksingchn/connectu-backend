@@ -289,7 +289,6 @@ export class MatchingService {
       WebSocketEvent.MATCH_FOUND,
       {
         ...matchData,
-        otherUserId: user2.userId,
         anonymousName: user1AnonymousName,
         otherAnonymousName: user2AnonymousName,
         message: 'Match found! Joining chat room...',
@@ -301,7 +300,6 @@ export class MatchingService {
       WebSocketEvent.MATCH_FOUND,
       {
         ...matchData,
-        otherUserId: user1.userId,
         anonymousName: user2AnonymousName,
         otherAnonymousName: user1AnonymousName,
         message: 'Match found! Joining chat room...',
@@ -504,7 +502,6 @@ export class MatchingService {
    */
   async getActiveRoom(userId: string): Promise<{
     roomId: string;
-    otherUserId: string;
     matchScore: number | null;
     expiresAt: Date | null;
   } | null> {
@@ -514,11 +511,10 @@ export class MatchingService {
       return null;
     }
 
-    const otherUserId = room.user1Id === userId ? room.user2Id : room.user1Id;
-
+    // Deliberately no id for the other participant: the chat is anonymous, and
+    // the friend-request flow resolves them server-side from roomId.
     return {
       roomId: room.id,
-      otherUserId,
       matchScore: room.matchScore ?? null,
       expiresAt: room.expiresAt ?? null,
     };

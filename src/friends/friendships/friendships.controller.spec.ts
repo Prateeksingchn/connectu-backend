@@ -1,3 +1,4 @@
+import { ParseUUIDPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FriendshipsController } from './friendships.controller';
 import { FriendshipsService } from './friendships.service';
@@ -11,6 +12,7 @@ describe('FriendshipsController', () => {
   beforeEach(async () => {
     service = {
       sendFriendRequest: jest.fn(),
+      sendFriendRequestByRoom: jest.fn(),
       respondToFriendRequest: jest.fn(),
       getFriends: jest.fn(),
       getPendingRequests: jest.fn(),
@@ -39,6 +41,36 @@ describe('FriendshipsController', () => {
 
     expect(service.sendFriendRequest).toHaveBeenCalledWith('user-1', dto);
     expect(result).toEqual({ message: 'ok', friendshipId: 'f-1' });
+  });
+
+  it('sendFriendRequestByRoom delegates with the current user id and the route roomId only', async () => {
+    service.sendFriendRequestByRoom.mockResolvedValue({
+      message: 'ok',
+      friendshipId: 'f-1',
+    });
+
+    const result = await controller.sendFriendRequestByRoom(user, 'room-1');
+
+    expect(service.sendFriendRequestByRoom).toHaveBeenCalledWith(
+      'user-1',
+      'room-1',
+    );
+    expect(result).toEqual({ message: 'ok', friendshipId: 'f-1' });
+  });
+
+  it('sendFriendRequestByRoom is JWT-guarded and validates roomId as a UUID', () => {
+    expect(
+      (Reflect.getMetadata('__guards__', FriendshipsController) ?? []).length,
+    ).toBeGreaterThan(0);
+    const routeParamTypes = Reflect.getMetadata(
+      '__routeArguments__',
+      FriendshipsController,
+      'sendFriendRequestByRoom',
+    ) as Record<string, { data: unknown; pipes: unknown[] }>;
+    const roomParam = Object.values(routeParamTypes).find(
+      (a) => a.data === 'roomId',
+    );
+    expect(roomParam?.pipes.some((p) => p === ParseUUIDPipe)).toBe(true);
   });
 
   it('respondToFriendRequest delegates to the service with the current user id and dto', async () => {

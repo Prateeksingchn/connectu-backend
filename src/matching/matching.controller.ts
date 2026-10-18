@@ -183,7 +183,6 @@ export class MatchingController {
     description: 'The active room, or null if the caller has none',
     example: {
       roomId: 'b3f1c9e0-6b1a-4b0a-9c3e-1a2b3c4d5e6f',
-      otherUserId: 'f6e5d4c3-b2a1-4d5e-9f8a-7b6c5d4e3f2a',
       matchScore: 5,
       expiresAt: '2026-07-26T18:40:00.000Z',
     },

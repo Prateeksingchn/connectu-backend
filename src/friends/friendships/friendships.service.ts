@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { FriendshipRepository } from './repositories/friendship.repository';
@@ -131,6 +132,44 @@ export class FriendshipsService {
       message: 'Friend request sent successfully',
       friendshipId: friendship.id,
     };
+  }
+
+  /**
+   * Send a friend request to the other participant of an anonymous matching
+   * room, identified only by roomId. The client never learns the other user's
+   * real id: it is resolved here from the room row and never returned.
+   *
+   * Rules (on top of everything sendFriendRequest enforces):
+   * - Caller must be a participant of the room. A missing room and a room the
+   *   caller isn't in both answer 404, so room ids can't be probed.
+   * - The room must have ended or expired; no requests while it is live.
+   */
+  async sendFriendRequestByRoom(
+    requesterId: string,
+    roomId: string,
+  ): Promise<{ message: string; friendshipId: string }> {
+    const room = await this.chatRoomRepository.findById(roomId);
+
+    if (
+      !room ||
+      (room.user1Id !== requesterId && room.user2Id !== requesterId)
+    ) {
+      throw new NotFoundException('Chat room not found');
+    }
+
+    const stillLive =
+      room.isActive &&
+      (!room.expiresAt || new Date(room.expiresAt).getTime() > Date.now());
+    if (stillLive) {
+      throw new ForbiddenException(
+        'Cannot send friend request while chat room is active',
+      );
+    }
+
+    const addresseeId =
+      room.user1Id === requesterId ? room.user2Id : room.user1Id;
+
+    return this.sendFriendRequest(requesterId, { addresseeId });
   }
 
   /**

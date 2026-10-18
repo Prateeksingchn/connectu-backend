@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { FriendshipsService } from './friendships.service';
 import { FriendshipRepository } from './repositories/friendship.repository';
@@ -26,6 +27,7 @@ describe('FriendshipsService', () => {
       findPendingIncomingRequests: jest.fn(),
     };
     chatRoomRepository = {
+      findById: jest.fn(),
       findActiveByUserId: jest.fn().mockResolvedValue(null),
       participatedInSameChatRoom: jest.fn().mockResolvedValue(true),
     };
@@ -43,6 +45,109 @@ describe('FriendshipsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('sendFriendRequestByRoom', () => {
+    const roomId = 'room-1';
+    const endedRoom = {
+      id: roomId,
+      user1Id: requesterId,
+      user2Id: addresseeId,
+      isActive: false,
+      expiresAt: new Date(Date.now() - 60_000),
+    };
+
+    beforeEach(() => {
+      chatRoomRepository.findById.mockResolvedValue(endedRoom);
+      friendshipRepository.createIfAbsent.mockResolvedValue({
+        created: true,
+        friendship: { id: 'f-1', status: FriendshipStatus.PENDING },
+      });
+    });
+
+    it('resolves the other participant from the room and creates the request', async () => {
+      await service.sendFriendRequestByRoom(requesterId, roomId);
+
+      expect(friendshipRepository.createIfAbsent).toHaveBeenCalledWith(
+        requesterId,
+        addresseeId,
+      );
+    });
+
+    it('resolves the other participant when the caller is user2', async () => {
+      await service.sendFriendRequestByRoom(addresseeId, roomId);
+
+      expect(friendshipRepository.createIfAbsent).toHaveBeenCalledWith(
+        addresseeId,
+        requesterId,
+      );
+    });
+
+    it('rejects a caller who is not a participant of the room', async () => {
+      await expect(
+        service.sendFriendRequestByRoom('user-outsider', roomId),
+      ).rejects.toThrow(NotFoundException);
+      expect(friendshipRepository.createIfAbsent).not.toHaveBeenCalled();
+    });
+
+    it('answers a missing room exactly like a non-participant (no room-id probing)', async () => {
+      chatRoomRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.sendFriendRequestByRoom(requesterId, roomId),
+      ).rejects.toThrow(new NotFoundException('Chat room not found'));
+      expect(friendshipRepository.createIfAbsent).not.toHaveBeenCalled();
+    });
+
+    it('rejects while the room is still active', async () => {
+      chatRoomRepository.findById.mockResolvedValue({
+        ...endedRoom,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 5 * 60_000),
+      });
+
+      await expect(
+        service.sendFriendRequestByRoom(requesterId, roomId),
+      ).rejects.toThrow(ForbiddenException);
+      expect(friendshipRepository.createIfAbsent).not.toHaveBeenCalled();
+    });
+
+    it('accepts a room that is past expiresAt even if the sweep has not flipped isActive yet', async () => {
+      chatRoomRepository.findById.mockResolvedValue({
+        ...endedRoom,
+        isActive: true,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+
+      await service.sendFriendRequestByRoom(requesterId, roomId);
+
+      expect(friendshipRepository.createIfAbsent).toHaveBeenCalled();
+    });
+
+    it('rejects a duplicate request with a conflict', async () => {
+      friendshipRepository.createIfAbsent.mockResolvedValue({
+        created: false,
+        friendship: { id: 'f-1', status: FriendshipStatus.PENDING },
+      });
+
+      await expect(
+        service.sendFriendRequestByRoom(requesterId, roomId),
+      ).rejects.toThrow(
+        new ConflictException('Friend request already pending'),
+      );
+    });
+
+    it('returns the same shape as the user-id endpoint and leaks no real id', async () => {
+      const result = await service.sendFriendRequestByRoom(requesterId, roomId);
+
+      expect(result).toEqual({
+        message: 'Friend request sent successfully',
+        friendshipId: 'f-1',
+      });
+      const serialized = JSON.stringify(result);
+      expect(serialized).not.toContain(requesterId);
+      expect(serialized).not.toContain(addresseeId);
+    });
   });
 
   describe('sendFriendRequest', () => {
